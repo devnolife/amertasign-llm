@@ -1,0 +1,46 @@
+# ───── Python / backend ─────
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ───── Node / frontend ─────
+node_modules/
+.next/
+out/
+.turbo/
+*.tsbuildinfo
+next-env.d.ts
+
+# Aset MediaPipe di-host lokal (di-generate oleh scripts/fetch-assets.sh)
+frontend/public/mediapipe/
+
+# ───── Environment ─────
+.env
+.env.local
+.env.*.local
+backend/.env
+
+# ───── Data & model (besar / hasil training) ─────
+# Pertahankan struktur folder, abaikan isinya.
+data/raw/*
+data/recordings/*
+data/public/*
+data/processed/*
+!data/**/.gitkeep
+backend/models/
+*.joblib
+*.pt
+*.onnx
+*.h5
+
+# ───── Misc ─────
+.DS_Store
+*.log
+.dev-logs/
+.vscode/
+.idea/
