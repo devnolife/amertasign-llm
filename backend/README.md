@@ -21,6 +21,10 @@ Buka dokumentasi interaktif di http://localhost:8000/docs
 | GET    | `/health`        | Status + daftar model tersedia                    |
 | POST   | `/recognize`     | Kenali 1 frame landmark (gestur statis / abjad)   |
 | WS     | `/ws/recognize`  | Streaming: kirim FramePayload, terima hasil       |
+| POST   | `/collect`       | Simpan sampel berlabel (hands / frames)           |
+| GET    | `/datasets`      | Statistik sampel terkumpul                        |
+| POST   | `/train`         | Latih classifier abjad (mode)                     |
+| GET    | `/train/confusion` | Confusion matrix model tersimpan                |
 
 Lihat `../docs/api-contract.md` dan `../docs/landmark-schema.md` untuk kontrak data.
 
@@ -33,7 +37,19 @@ app/
 ├── schemas/           # Pydantic: landmark & hasil
 ├── ml/
 │   ├── normalize.py   # landmark -> vektor fitur (invarian translasi/skala)
+│   ├── dataset.py     # simpan/iterasi sampel berlabel + statistik
+│   ├── train.py       # training classifier abjad (sklearn) + confusion
 │   └── registry.py    # load model per (mode, stage) + prediksi
-├── routers/           # health, recognize (HTTP + WS)
+├── routers/           # health, recognize (HTTP+WS), data, train
 └── llm/               # gloss -> kalimat (Fase 5)
+```
+
+## Data & training (CLI)
+
+```bash
+# Ingest dataset gambar publik (butuh: pip install mediapipe opencv-python)
+python ../scripts/ingest_public.py --input-dir ../data/public/sibi_alphabet --mode SIBI
+
+# Latih model abjad dari sampel terkumpul
+python ../scripts/train.py --mode SIBI
 ```

@@ -49,8 +49,25 @@ def normalize_hand(landmarks: Sequence) -> np.ndarray:
 def frame_to_features(hands: Iterable, max_hands: int = 2) -> np.ndarray:
     """Gabungkan tangan-tangan dalam satu frame -> vektor fitur fixed-length.
 
-    Urutan slot mengikuti HAND_ORDER ([Left, Right]); slot kosong diisi nol.
+    - max_hands == 1 (mis. SIBI): pakai SATU tangan dominan (skor tertinggi),
+      tanpa peduli handedness. Mengikat ke slot handedness justru membuang tangan
+      bila label-nya tak sesuai slot.
+    - max_hands >= 2 (mis. BISINDO): pakai slot terurut [Left, Right]; slot kosong
+      diisi nol sehingga posisi relatif kedua tangan konsisten.
     """
+    hands = list(hands)
+
+    if max_hands == 1:
+        if not hands:
+            return np.zeros(FEATURES_PER_HAND, dtype=np.float32)
+
+        def _score(h):
+            return h["score"] if isinstance(h, dict) else getattr(h, "score", 1.0)
+
+        best = max(hands, key=_score)
+        landmarks = best["landmarks"] if isinstance(best, dict) else best.landmarks
+        return normalize_hand(landmarks)
+
     slots = {name: np.zeros(FEATURES_PER_HAND, dtype=np.float32) for name in HAND_ORDER}
     for hand in hands:
         handedness = hand["handedness"] if isinstance(hand, dict) else hand.handedness

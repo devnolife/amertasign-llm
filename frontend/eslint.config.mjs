@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Aset pihak ketiga yang di-vendor (WASM glue MediaPipe) — jangan dilint.
+    "public/**",
   ]),
 ]);
 

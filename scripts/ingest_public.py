@@ -1,0 +1,142 @@
+#!/usr/bin/env python3
+"""Ingest dataset gambar publik (mis. SIBI alphabet) menjadi sampel landmark.
+
+Mengubah folder gambar berlabel menjadi sampel fitur landmark yang kompatibel
+dengan penyimpanan dataset backend (data/recordings + manifest.jsonl), sehingga
+bisa langsung dilatih oleh `scripts/train.py`.
+
+Struktur input yang diharapkan (image-folder, label = nama subfolder):
+    <input_dir>/
+      A/ img001.jpg img002.jpg ...
+      B/ ...
+      ...
+
+Contoh sumber publik:
+  - SIBI alphabet (Kaggle): cari "SIBI alphabet" / "Indonesian Sign Language SIBI".
+  - BISINDO: sumber terbuka terbatas; pertimbangkan merekam sendiri via Recorder UI.
+
+Catatan: butuh `mediapipe` & `opencv-python` (tidak termasuk requirements inti
+backend agar instalasi backend tetap ringan):
+    pip install mediapipe opencv-python
+
+Penggunaan:
+    python scripts/ingest_public.py --input-dir data/public/sibi_alphabet \
+        --mode SIBI --stage abjad
+"""
+from __future__ import annotations
+
+import argparse
+import sys
+import time
+from pathlib import Path
+
+# Pastikan paket `app` (di backend/) dapat diimpor.
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "backend"))
+
+import numpy as np  # noqa: E402
+
+from app.ml.dataset import save_sample  # noqa: E402
+from app.ml.normalize import frame_to_features, max_hands_for_mode  # noqa: E402
+
+IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
+
+
+def _load_detector():
+    try:
+        import cv2  # noqa: F401
+        import mediapipe as mp
+    except ImportError as exc:  # pragma: no cover
+        raise SystemExit(
+            "Butuh mediapipe & opencv-python. Install: pip install mediapipe opencv-python"
+        ) from exc
+
+    mp_hands = mp.solutions.hands
+    detector = mp_hands.Hands(
+        static_image_mode=True, max_num_hands=2, min_detection_confidence=0.5
+    )
+    return detector
+
+
+def _to_hands(results) -> list[dict]:
+    """Konversi hasil mediapipe.solutions.hands -> skema HandLandmarks (dict)."""
+    hands: list[dict] = []
+    if not results.multi_hand_landmarks:
+        return hands
+    handedness_list = results.multi_handedness or []
+    for i, hand_landmarks in enumerate(results.multi_hand_landmarks):
+        label = "Right"
+        if i < len(handedness_list):
+            label = handedness_list[i].classification[0].label
+        hands.append(
+            {
+                "handedness": label,
+                "score": 1.0,
+                "landmarks": [
+                    {"x": lm.x, "y": lm.y, "z": lm.z} for lm in hand_landmarks.landmark
+                ],
+            }
+        )
+    return hands
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--input-dir", required=True, type=Path)
+    ap.add_argument("--mode", required=True, choices=["BISINDO", "SIBI"])
+    ap.add_argument("--stage", default="abjad", choices=["abjad", "kata", "kalimat"])
+    ap.add_argument("--limit-per-label", type=int, default=0, help="0 = tanpa batas")
+    args = ap.parse_args()
+
+    if not args.input_dir.is_dir():
+        raise SystemExit(f"Folder tidak ditemukan: {args.input_dir}")
+
+    import cv2
+
+    detector = _load_detector()
+    max_hands = max_hands_for_mode(args.mode)
+
+    label_dirs = sorted(p for p in args.input_dir.iterdir() if p.is_dir())
+    if not label_dirs:
+        raise SystemExit("Tidak ada subfolder label di input-dir.")
+
+    total_saved = 0
+    total_skipped = 0
+    for label_dir in label_dirs:
+        label = label_dir.name
+        images = [p for p in sorted(label_dir.iterdir()) if p.suffix.lower() in IMAGE_EXTS]
+        if args.limit_per_label > 0:
+            images = images[: args.limit_per_label]
+
+        saved = 0
+        for img_path in images:
+            img = cv2.imread(str(img_path))
+            if img is None:
+                total_skipped += 1
+                continue
+            rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            results = detector.process(rgb)
+            hands = _to_hands(results)
+            if not hands:
+                total_skipped += 1
+                continue
+            features = frame_to_features(hands, max_hands=max_hands)
+            save_sample(
+                mode=args.mode,
+                stage=args.stage,
+                label=label,
+                features=np.asarray(features, dtype=np.float32),
+                max_hands=max_hands,
+                created_at=time.time(),
+            )
+            saved += 1
+            total_saved += 1
+        print(f"[{label}] tersimpan {saved} / {len(images)} gambar")
+
+    print(f"\nSelesai. Total tersimpan: {total_saved}, dilewati (tanpa tangan): {total_skipped}")
+    detector.close()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

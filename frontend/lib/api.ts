@@ -1,7 +1,16 @@
 // Klien WebSocket untuk streaming pengenalan + fallback HTTP.
 
 import { API_URL, WS_URL } from "./config";
-import type { FramePayload, RecognitionResult } from "./types";
+import type {
+  CollectResponse,
+  DatasetStats,
+  FramePayload,
+  HandLandmarks,
+  Mode,
+  RecognitionResult,
+  Stage,
+  TrainResult,
+} from "./types";
 
 export type SocketStatus = "connecting" | "open" | "closed" | "error";
 
@@ -73,4 +82,56 @@ export async function recognizeOnce(
   });
   if (!res.ok) throw new Error(`recognize gagal: ${res.status}`);
   return (await res.json()) as RecognitionResult;
+}
+
+// ───── Pengumpulan data & training (Fase 2-3) ─────
+
+export interface CollectBody {
+  mode: Mode;
+  stage: Stage;
+  label: string;
+  hands?: HandLandmarks[];
+  frames?: HandLandmarks[][];
+}
+
+export async function collectSample(
+  body: CollectBody,
+): Promise<CollectResponse> {
+  const res = await fetch(`${API_URL}/collect`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(`collect gagal: ${res.status} ${detail}`);
+  }
+  return (await res.json()) as CollectResponse;
+}
+
+export async function getDatasets(
+  mode?: Mode,
+  stage?: Stage,
+): Promise<DatasetStats> {
+  const params = new URLSearchParams();
+  if (mode) params.set("mode", mode);
+  if (stage) params.set("stage", stage);
+  const qs = params.toString();
+  const res = await fetch(`${API_URL}/datasets${qs ? `?${qs}` : ""}`);
+  if (!res.ok) throw new Error(`datasets gagal: ${res.status}`);
+  return (await res.json()) as DatasetStats;
+}
+
+export async function trainModel(
+  mode: Mode,
+  stage: Stage = "abjad",
+  augmentTimes = 2,
+): Promise<TrainResult> {
+  const res = await fetch(`${API_URL}/train`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ mode, stage, augment_times: augmentTimes }),
+  });
+  if (!res.ok) throw new Error(`train gagal: ${res.status}`);
+  return (await res.json()) as TrainResult;
 }

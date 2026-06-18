@@ -49,12 +49,43 @@ Streaming low-latency untuk real-time.
 - Server membalas `RecognitionResult` (JSON) per frame.
 - Payload invalid → `{ "error": "invalid_payload", "detail": [...] }`.
 
+### `POST /collect`
+Simpan satu sampel berlabel untuk training.
+```ts
+interface CollectRequest {
+  mode: Mode;
+  stage: Stage;
+  label: string;             // mis. "A" (abjad) atau "makan" (kata)
+  hands?: HandLandmarks[];   // gestur statis (abjad)
+  frames?: HandLandmarks[][];// gestur dinamis (kata/kalimat)
+}
+interface CollectResponse {
+  id: string; label: string; num_frames: number;
+  feature_dim: number; total_for_label: number;
+}
+```
+
+### `GET /datasets?mode=&stage=`
+Statistik sampel terkumpul: `{ total, counts: { mode: { stage: { label: n } } } }`.
+
+### `POST /train`
+Latih classifier abjad dari sampel terkumpul.
+```ts
+// body: { mode: Mode, stage?: "abjad", augment_times?: number }
+interface TrainResult {
+  mode: Mode; stage: Stage; labels: string[];
+  n_samples: number; n_classes: number;
+  train_accuracy: number; val_accuracy: number;
+  model_path: string; note?: string;
+}
+```
+
+### `GET /train/confusion?mode=&stage=`
+Confusion matrix model tersimpan: `{ labels: string[], matrix: number[][] }`.
+
 ## Endpoint (rencana fase berikutnya)
 
 | Fase | Endpoint            | Fungsi                                       |
 |------|---------------------|----------------------------------------------|
-| 2    | `POST /collect`     | Simpan sampel berlabel untuk dataset         |
-| 2    | `GET  /datasets`    | Statistik dataset terkumpul                  |
-| 2    | `POST /train`       | Trigger training model (mode, stage)         |
 | 4    | `WS /ws/recognize`  | Mode urutan (kata) — buffering temporal      |
 | 5    | `POST /compose`     | Urutan gloss → kalimat natural (LLM)         |

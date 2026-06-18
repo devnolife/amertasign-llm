@@ -43,3 +43,31 @@ export const STAGE_LABELS: Record<Stage, string> = {
   kata: "Kata",
   kalimat: "Kalimat",
 };
+
+// ───── Pengumpulan data & training ─────
+
+export interface CollectResponse {
+  id: string;
+  label: string;
+  num_frames: number;
+  feature_dim: number;
+  total_for_label: number;
+}
+
+// counts[mode][stage][label] = jumlah sampel
+export interface DatasetStats {
+  total: number;
+  counts: Record<string, Record<string, Record<string, number>>>;
+}
+
+export interface TrainResult {
+  mode: Mode;
+  stage: Stage;
+  labels: string[];
+  n_samples: number;
+  n_classes: number;
+  train_accuracy: number;
+  val_accuracy: number;
+  model_path: string;
+  note?: string;
+}

@@ -50,12 +50,17 @@ Lalu buka http://localhost:3000
 
 | Fase | Deskripsi                              | Status   |
 |------|----------------------------------------|----------|
-| 0    | Scaffolding & infra                    | berjalan |
-| 1    | Pipeline landmark real-time            | berikutnya |
-| 2    | Tools perekaman data + dataset publik  | —        |
-| 3    | Pengenalan abjad                       | —        |
-| 4    | Pengenalan kata                        | —        |
+| 0    | Scaffolding & infra                    | ✅ selesai |
+| 1    | Pipeline landmark real-time            | ✅ selesai |
+| 2    | Tools perekaman data + dataset publik  | ✅ selesai |
+| 3    | Pengenalan abjad                       | ✅ selesai |
+| 4    | Pengenalan kata                        | berikutnya |
 | 5    | Kalimat kontinu + LLM                  | —        |
 | 6    | Polish, evaluasi, deploy               | —        |
+
+## Halaman
+
+- `/` — Pengenalan isyarat real-time (webcam → teks).
+- `/collect` — Studio data: rekam sampel berlabel & latih model abjad.
 
 Lihat `docs/` untuk detail kontrak data & API.
