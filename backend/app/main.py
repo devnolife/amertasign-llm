@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routers import data, health, recognize, train
+from app.routers import compose, data, health, recognize, train
 
 app = FastAPI(title=settings.app_name, debug=settings.debug)
 
@@ -21,6 +21,7 @@ app.include_router(health.router)
 app.include_router(recognize.router)
 app.include_router(data.router)
 app.include_router(train.router)
+app.include_router(compose.router)
 
 
 @app.get("/")

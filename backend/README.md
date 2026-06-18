@@ -25,6 +25,7 @@ Buka dokumentasi interaktif di http://localhost:8000/docs
 | GET    | `/datasets`      | Statistik sampel terkumpul                        |
 | POST   | `/train`         | Latih classifier abjad (mode)                     |
 | GET    | `/train/confusion` | Confusion matrix model tersimpan                |
+| POST   | `/compose`       | Susun gloss → kalimat Indonesia (LLM, Fase 5)     |
 
 Lihat `../docs/api-contract.md` dan `../docs/landmark-schema.md` untuk kontrak data.
 
@@ -40,8 +41,8 @@ app/
 │   ├── dataset.py     # simpan/iterasi sampel berlabel + statistik
 │   ├── train.py       # training classifier abjad (sklearn) + confusion
 │   └── registry.py    # load model per (mode, stage) + prediksi
-├── routers/           # health, recognize (HTTP+WS), data, train
-└── llm/               # gloss -> kalimat (Fase 5)
+├── routers/           # health, recognize (HTTP+WS), data, train, compose
+└── llm/               # compose.py: gloss -> kalimat (stub / openai-compatible)
 ```
 
 ## Data & training (CLI)

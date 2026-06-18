@@ -150,3 +150,25 @@ export async function trainModel(
   if (!res.ok) throw new Error(`train gagal: ${res.status}`);
   return (await res.json()) as TrainResult;
 }
+
+// ───── Penyusunan kalimat dari gloss (Fase 5) ─────
+
+export interface ComposeResult {
+  sentence: string;
+  provider: string;
+  gloss: string[];
+  note?: string;
+}
+
+export async function composeSentence(
+  mode: Mode,
+  gloss: string[],
+): Promise<ComposeResult> {
+  const res = await fetch(`${API_URL}/compose`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ mode, gloss }),
+  });
+  if (!res.ok) throw new Error(`compose gagal: ${res.status}`);
+  return (await res.json()) as ComposeResult;
+}

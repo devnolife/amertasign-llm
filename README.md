@@ -55,8 +55,8 @@ Lalu buka http://localhost:3000
 | 2    | Tools perekaman data + dataset publik  | ✅ selesai |
 | 3    | Pengenalan abjad                       | ✅ selesai |
 | 4    | Pengenalan kata                        | ✅ selesai |
-| 5    | Kalimat kontinu + LLM                  | berikutnya |
-| 6    | Polish, evaluasi, deploy               | —        |
+| 5    | Kalimat kontinu + LLM                  | ✅ selesai |
+| 6    | Polish, evaluasi, deploy               | berikutnya |
 
 ## Halaman
 

@@ -97,8 +97,23 @@ interface TrainResult {
 ### `GET /train/confusion?mode=&stage=`
 Confusion matrix model tersimpan: `{ labels: string[], matrix: number[][] }`.
 
+### `POST /compose`
+Susun urutan **gloss** → kalimat Bahasa Indonesia natural (Fase 5).
+```ts
+// body: { mode: Mode, gloss: string[] }
+interface ComposeResponse {
+  sentence: string;
+  provider: string;   // "stub" | "openai-compatible"
+  gloss: string[];
+  note?: string;
+}
+```
+Provider diatur lewat env `AMERTASIGN_LLM_*` (lihat `backend/.env.example`).
+Default `stub` (heuristik lokal, tanpa API). Untuk LLM nyata set
+`AMERTASIGN_LLM_PROVIDER=openai-compatible` + `LLM_BASE_URL` + `LLM_API_KEY` + `LLM_MODEL`.
+
 ## Endpoint (rencana fase berikutnya)
 
 | Fase | Endpoint            | Fungsi                                       |
 |------|---------------------|----------------------------------------------|
-| 5    | `POST /compose`     | Urutan gloss → kalimat natural (LLM)         |
+| 6    | (deploy/polish)     | Dockerize, dashboard akurasi, versioning     |
