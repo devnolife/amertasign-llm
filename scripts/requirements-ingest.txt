@@ -1,0 +1,4 @@
+# Dependency opsional untuk ingest dataset gambar publik (scripts/ingest_public.py).
+# Tidak termasuk requirements inti backend agar instalasi server tetap ringan.
+mediapipe>=0.10.21
+opencv-python-headless>=4.9

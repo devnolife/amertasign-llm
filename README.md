@@ -46,6 +46,22 @@ amertasign-llm/
 
 Lalu buka http://localhost:3000
 
+### Dataset (BISINDO alfabet, otomatis)
+
+Belum ada data bawaan. Untuk langsung punya model abjad BISINDO dari dataset publik
+**MIT** (511 sampel, val acc ~99%):
+
+```bash
+./scripts/fetch-dataset.sh                                   # unduh gambar A-Z (MIT)
+./backend/.venv/bin/pip install -r scripts/requirements-ingest.txt
+./backend/.venv/bin/python scripts/ingest_public.py \
+    --input-dir data/public/bisindo_rhiosutoyo --mode BISINDO --stage abjad
+./backend/.venv/bin/python scripts/train.py --mode BISINDO --stage abjad
+```
+
+Atau rekam sendiri (terutama untuk **kata**) via halaman `/collect`.
+Detail & sumber lain: lihat `docs/datasets.md`.
+
 ### Atau dengan Docker
 
 ```bash
