@@ -46,6 +46,21 @@ amertasign-llm/
 
 Lalu buka http://localhost:3000
 
+### Atau dengan Docker
+
+```bash
+docker compose up --build
+```
+
+Lihat `DEPLOYMENT.md` untuk detail (HTTPS/kamera, domain, LLM, model).
+
+## Tes
+
+```bash
+cd backend && pytest               # tes pipeline fitur & API
+cd frontend && pnpm lint && pnpm build
+```
+
 ## Status pengembangan
 
 | Fase | Deskripsi                              | Status   |
@@ -56,7 +71,7 @@ Lalu buka http://localhost:3000
 | 3    | Pengenalan abjad                       | ✅ selesai |
 | 4    | Pengenalan kata                        | ✅ selesai |
 | 5    | Kalimat kontinu + LLM                  | ✅ selesai |
-| 6    | Polish, evaluasi, deploy               | berikutnya |
+| 6    | Polish, evaluasi, deploy               | ✅ selesai |
 
 ## Halaman
 

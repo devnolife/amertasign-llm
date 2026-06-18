@@ -1,0 +1,35 @@
+# amertasign-llm — orkestrasi dev/produksi sederhana
+# Jalankan: docker compose up --build
+services:
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      AMERTASIGN_DEBUG: "false"
+      AMERTASIGN_DATA_DIR: /data
+      AMERTASIGN_MODELS_DIR: /app/models
+      # CORS untuk frontend (sesuaikan bila domain berbeda)
+      AMERTASIGN_CORS_ORIGINS: '["http://localhost:3000"]'
+      # LLM opsional (Fase 5). Default stub.
+      AMERTASIGN_LLM_PROVIDER: stub
+    volumes:
+      - amerta-data:/data
+      - amerta-models:/app/models
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Browser mengakses backend lewat host; ubah bila deploy ke domain lain.
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+        NEXT_PUBLIC_WS_URL: ws://localhost:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  amerta-data:
+  amerta-models:
