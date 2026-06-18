@@ -49,6 +49,18 @@ Streaming low-latency untuk real-time.
 - Server membalas `RecognitionResult` (JSON) per frame.
 - Payload invalid → `{ "error": "invalid_payload", "detail": [...] }`.
 
+### `POST /recognize_sequence`
+Pengenalan **kata** (gestur dinamis). Frontend menyegmentasi gerakan lalu mengirim
+satu segmen urutan frame.
+```ts
+interface SequencePayload {
+  mode: Mode;
+  stage: Stage;          // "kata"
+  frames: HandLandmarks[][];  // urutan frame (durasi bebas, di-resample server)
+}
+```
+Response: `RecognitionResult`.
+
 ### `POST /collect`
 Simpan satu sampel berlabel untuk training.
 ```ts
@@ -69,9 +81,9 @@ interface CollectResponse {
 Statistik sampel terkumpul: `{ total, counts: { mode: { stage: { label: n } } } }`.
 
 ### `POST /train`
-Latih classifier abjad dari sampel terkumpul.
+Latih classifier abjad/kata dari sampel terkumpul.
 ```ts
-// body: { mode: Mode, stage?: "abjad", augment_times?: number }
+// body: { mode: Mode, stage?: "abjad"|"kata", augment_times?: number }
 interface TrainResult {
   mode: Mode; stage: Stage; labels: string[];
   n_samples: number; n_classes: number;
@@ -79,6 +91,8 @@ interface TrainResult {
   model_path: string; note?: string;
 }
 ```
+- `stage="abjad"` → classifier statis (fitur 1 frame).
+- `stage="kata"` → classifier urutan (resample ke `seq_len`, lalu flatten).
 
 ### `GET /train/confusion?mode=&stage=`
 Confusion matrix model tersimpan: `{ labels: string[], matrix: number[][] }`.
@@ -87,5 +101,4 @@ Confusion matrix model tersimpan: `{ labels: string[], matrix: number[][] }`.
 
 | Fase | Endpoint            | Fungsi                                       |
 |------|---------------------|----------------------------------------------|
-| 4    | `WS /ws/recognize`  | Mode urutan (kata) — buffering temporal      |
 | 5    | `POST /compose`     | Urutan gloss → kalimat natural (LLM)         |

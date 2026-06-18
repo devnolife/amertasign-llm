@@ -90,3 +90,36 @@ def sequence_to_features(frames: Iterable[Iterable], max_hands: int = 2) -> np.n
     if not feats:
         return np.zeros((0, FEATURES_PER_HAND * max_hands), dtype=np.float32)
     return np.stack(feats, axis=0)
+
+
+def resample_sequence(seq: np.ndarray, length: int) -> np.ndarray:
+    """Resample urutan (T, F) menjadi (length, F) via interpolasi linear.
+
+    Membuat panjang urutan seragam sehingga bisa diratakan jadi vektor fitur
+    fixed-length untuk classifier non-temporal (MLP). Robust terhadap durasi
+    gestur yang bervariasi.
+    """
+    seq = np.asarray(seq, dtype=np.float32)
+    if seq.ndim != 2:
+        raise ValueError("seq harus 2D (T, F)")
+    t = seq.shape[0]
+    if t == 0:
+        return np.zeros((length, seq.shape[1] if seq.ndim == 2 else 0), dtype=np.float32)
+    if t == length:
+        return seq
+    src = np.linspace(0.0, 1.0, num=t)
+    dst = np.linspace(0.0, 1.0, num=length)
+    out = np.empty((length, seq.shape[1]), dtype=np.float32)
+    for j in range(seq.shape[1]):
+        out[:, j] = np.interp(dst, src, seq[:, j])
+    return out
+
+
+def sequence_feature_vector(
+    frames: Iterable[Iterable], max_hands: int, seq_len: int
+) -> np.ndarray:
+    """Urutan frame -> vektor fitur datar (seq_len * F) untuk classifier kata."""
+    seq = sequence_to_features(frames, max_hands=max_hands)
+    if seq.shape[0] == 0:
+        return np.zeros(seq_len * FEATURES_PER_HAND * max_hands, dtype=np.float32)
+    return resample_sequence(seq, seq_len).reshape(-1).astype(np.float32)

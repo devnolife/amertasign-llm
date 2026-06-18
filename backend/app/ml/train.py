@@ -22,7 +22,7 @@ from sklearn.preprocessing import StandardScaler
 
 from app.config import settings
 from app.ml.dataset import iter_records, load_features
-from app.ml.normalize import max_hands_for_mode
+from app.ml.normalize import max_hands_for_mode, resample_sequence
 
 
 @dataclass
@@ -63,16 +63,37 @@ def _augment(X: np.ndarray, y: list[str], times: int, sigma: float) -> tuple[np.
     return np.concatenate(parts, axis=0), labels
 
 
-def train_alphabet(
-    mode: str,
-    stage: str = "abjad",
-    augment_times: int = 2,
-    augment_sigma: float = 0.01,
-    test_size: float = 0.2,
-) -> TrainResult:
-    X, y = _collect_static_samples(mode, stage)
-    n_classes = len(set(y))
+def _collect_sequence_samples(
+    mode: str, stage: str, seq_len: int
+) -> tuple[np.ndarray, list[str]]:
+    """Kumpulkan sampel urutan (num_frames>1), resample ke seq_len, lalu flatten."""
+    X: list[np.ndarray] = []
+    y: list[str] = []
+    for rec in iter_records():
+        if rec.mode != mode or rec.stage != stage or rec.num_frames <= 1:
+            continue
+        seq = load_features(rec)  # (T, F)
+        if seq.ndim != 2:
+            continue
+        X.append(resample_sequence(seq, seq_len).reshape(-1))
+        y.append(rec.label)
+    if not X:
+        return np.empty((0, 0), dtype=np.float32), []
+    return np.stack(X), y
 
+
+def _fit_and_save(
+    X: np.ndarray,
+    y: list[str],
+    mode: str,
+    stage: str,
+    augment_times: int,
+    augment_sigma: float,
+    test_size: float,
+    extra_bundle: Optional[dict] = None,
+) -> TrainResult:
+    """Inti training bersama: split, augmentasi, latih MLP, simpan bundle."""
+    n_classes = len(set(y))
     if X.shape[0] < 2 or n_classes < 2:
         return TrainResult(
             mode=mode,
@@ -113,7 +134,6 @@ def train_alphabet(
     train_acc = accuracy_score(y_train, clf.predict(X_train))
     val_acc = accuracy_score(y_val, clf.predict(X_val))
 
-    labels = sorted(set(y))
     bundle = {
         "clf": clf,
         "labels": list(clf.classes_),
@@ -121,6 +141,8 @@ def train_alphabet(
         "mode": mode,
         "stage": stage,
     }
+    if extra_bundle:
+        bundle.update(extra_bundle)
     settings.models_dir.mkdir(parents=True, exist_ok=True)
     model_path = settings.models_dir / f"{mode}_{stage}.joblib"
     joblib.dump(bundle, model_path)
@@ -128,12 +150,47 @@ def train_alphabet(
     return TrainResult(
         mode=mode,
         stage=stage,
-        labels=labels,
+        labels=sorted(set(y)),
         n_samples=int(X.shape[0]),
         n_classes=n_classes,
         train_accuracy=float(train_acc),
         val_accuracy=float(val_acc),
         model_path=str(model_path),
+    )
+
+
+def train_alphabet(
+    mode: str,
+    stage: str = "abjad",
+    augment_times: int = 2,
+    augment_sigma: float = 0.01,
+    test_size: float = 0.2,
+) -> TrainResult:
+    X, y = _collect_static_samples(mode, stage)
+    return _fit_and_save(
+        X, y, mode, stage, augment_times, augment_sigma, test_size
+    )
+
+
+def train_words(
+    mode: str,
+    stage: str = "kata",
+    seq_len: int = 16,
+    augment_times: int = 2,
+    augment_sigma: float = 0.01,
+    test_size: float = 0.2,
+) -> TrainResult:
+    """Latih classifier kata dari sampel urutan (resample ke seq_len lalu flatten)."""
+    X, y = _collect_sequence_samples(mode, stage, seq_len)
+    return _fit_and_save(
+        X,
+        y,
+        mode,
+        stage,
+        augment_times,
+        augment_sigma,
+        test_size,
+        extra_bundle={"seq_len": seq_len},
     )
 
 

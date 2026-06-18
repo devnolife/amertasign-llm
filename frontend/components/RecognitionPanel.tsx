@@ -5,9 +5,14 @@ import type { RecognitionResult } from "@/lib/types";
 interface Props {
   result: RecognitionResult | null;
   handsDetected: number;
+  capturing?: boolean;
 }
 
-export default function RecognitionPanel({ result, handsDetected }: Props) {
+export default function RecognitionPanel({
+  result,
+  handsDetected,
+  capturing = false,
+}: Props) {
   const text = result?.text ?? "";
   const confidence = result?.confidence ?? 0;
   const candidates = result?.candidates ?? [];
@@ -63,6 +68,12 @@ export default function RecognitionPanel({ result, handsDetected }: Props) {
 
       <p className="text-xs text-zinc-500">
         Tangan terdeteksi: <span className="text-zinc-300">{handsDetected}</span>
+        {capturing && (
+          <span className="ml-2 inline-flex items-center gap-1 text-rose-400">
+            <span className="h-2 w-2 rounded-full bg-rose-500 animate-pulse" />
+            merekam gestur…
+          </span>
+        )}
       </p>
     </div>
   );

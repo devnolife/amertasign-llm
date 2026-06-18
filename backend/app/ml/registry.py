@@ -25,8 +25,17 @@ import joblib
 import numpy as np
 
 from app.config import settings
-from app.ml.normalize import frame_to_features, max_hands_for_mode
-from app.schemas.landmarks import Candidate, FramePayload, RecognitionResult
+from app.ml.normalize import (
+    frame_to_features,
+    max_hands_for_mode,
+    sequence_feature_vector,
+)
+from app.schemas.landmarks import (
+    Candidate,
+    FramePayload,
+    RecognitionResult,
+    SequencePayload,
+)
 
 _lock = threading.Lock()
 _cache: dict[str, Optional[dict]] = {}
@@ -81,7 +90,18 @@ def predict_frame(payload: FramePayload, top_k: int = 3) -> RecognitionResult:
 
     max_hands = bundle.get("max_hands", max_hands_for_mode(payload.mode))
     features = frame_to_features(payload.hands, max_hands=max_hands).reshape(1, -1)
+    return _predict_with_bundle(
+        bundle, features, payload.mode, payload.stage, top_k
+    )
 
+
+def _predict_with_bundle(
+    bundle: dict,
+    features: np.ndarray,
+    mode: str,
+    stage: str,
+    top_k: int,
+) -> RecognitionResult:
     clf = bundle["clf"]
     labels = bundle["labels"]
     proba = clf.predict_proba(features)[0]
@@ -94,7 +114,41 @@ def predict_frame(payload: FramePayload, top_k: int = 3) -> RecognitionResult:
         text=text,
         confidence=best.confidence,
         candidates=candidates,
-        mode=payload.mode,
-        stage=payload.stage,
+        mode=mode,
+        stage=stage,
         model_loaded=True,
+    )
+
+
+def predict_sequence(payload: SequencePayload, top_k: int = 3) -> RecognitionResult:
+    """Prediksi label dari urutan frame (gestur dinamis, mis. kata)."""
+    bundle = _load_bundle(payload.mode, payload.stage)
+
+    if bundle is None:
+        return RecognitionResult(
+            text="",
+            confidence=0.0,
+            mode=payload.mode,
+            stage=payload.stage,
+            model_loaded=False,
+            note="Model kata belum dilatih. Kumpulkan urutan & latih (Fase 4).",
+        )
+
+    if not payload.frames:
+        return RecognitionResult(
+            text="",
+            confidence=0.0,
+            mode=payload.mode,
+            stage=payload.stage,
+            model_loaded=True,
+            note="Urutan kosong.",
+        )
+
+    max_hands = bundle.get("max_hands", max_hands_for_mode(payload.mode))
+    seq_len = bundle.get("seq_len", 16)
+    features = sequence_feature_vector(
+        payload.frames, max_hands=max_hands, seq_len=seq_len
+    ).reshape(1, -1)
+    return _predict_with_bundle(
+        bundle, features, payload.mode, payload.stage, top_k
     )

@@ -141,11 +141,13 @@ export default function Recorder() {
   }, [recording, label, mode, stage, refreshStats]);
 
   const onTrain = useCallback(async () => {
+    // Training otomatis tersedia untuk abjad & kata.
+    const trainStage = stage === "kata" ? "kata" : "abjad";
     setBusy(true);
     setMessage(null);
     setTrainResult(null);
     try {
-      const res = await trainModel(mode, "abjad");
+      const res = await trainModel(mode, trainStage);
       setTrainResult(res);
       setMessage(
         res.note
@@ -157,7 +159,7 @@ export default function Recorder() {
     } finally {
       setBusy(false);
     }
-  }, [mode]);
+  }, [mode, stage]);
 
   const labelsForStage = stats?.counts?.[mode]?.[stage] ?? {};
 
@@ -266,11 +268,15 @@ export default function Recorder() {
         <button
           type="button"
           onClick={() => void onTrain()}
-          disabled={busy || stage !== "abjad"}
-          title={stage !== "abjad" ? "Training otomatis tersedia untuk abjad" : ""}
+          disabled={busy || stage === "kalimat"}
+          title={
+            stage === "kalimat"
+              ? "Tahap kalimat memakai LLM (Fase 5), bukan training classifier"
+              : ""
+          }
           className="px-5 py-2.5 rounded-lg font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-100 disabled:opacity-50"
         >
-          Latih model abjad ({mode})
+          Latih model {stage === "kata" ? "kata" : "abjad"} ({mode})
         </button>
 
         {message && (

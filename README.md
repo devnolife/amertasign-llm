@@ -54,8 +54,8 @@ Lalu buka http://localhost:3000
 | 1    | Pipeline landmark real-time            | ✅ selesai |
 | 2    | Tools perekaman data + dataset publik  | ✅ selesai |
 | 3    | Pengenalan abjad                       | ✅ selesai |
-| 4    | Pengenalan kata                        | berikutnya |
-| 5    | Kalimat kontinu + LLM                  | —        |
+| 4    | Pengenalan kata                        | ✅ selesai |
+| 5    | Kalimat kontinu + LLM                  | berikutnya |
 | 6    | Polish, evaluasi, deploy               | —        |
 
 ## Halaman

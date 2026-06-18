@@ -84,6 +84,21 @@ export async function recognizeOnce(
   return (await res.json()) as RecognitionResult;
 }
 
+// Pengenalan urutan (kata) — kirim segmen frame yang sudah disegmentasi.
+export async function recognizeSequence(
+  mode: Mode,
+  stage: Stage,
+  frames: HandLandmarks[][],
+): Promise<RecognitionResult> {
+  const res = await fetch(`${API_URL}/recognize_sequence`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ mode, stage, frames }),
+  });
+  if (!res.ok) throw new Error(`recognize_sequence gagal: ${res.status}`);
+  return (await res.json()) as RecognitionResult;
+}
+
 // ───── Pengumpulan data & training (Fase 2-3) ─────
 
 export interface CollectBody {

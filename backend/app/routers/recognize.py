@@ -8,8 +8,8 @@ from __future__ import annotations
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from pydantic import ValidationError
 
-from app.ml.registry import predict_frame
-from app.schemas.landmarks import FramePayload, RecognitionResult
+from app.ml.registry import predict_frame, predict_sequence
+from app.schemas.landmarks import FramePayload, RecognitionResult, SequencePayload
 
 router = APIRouter(tags=["recognize"])
 
@@ -18,6 +18,12 @@ router = APIRouter(tags=["recognize"])
 def recognize(payload: FramePayload) -> RecognitionResult:
     """Kenali satu frame landmark (gestur statis)."""
     return predict_frame(payload)
+
+
+@router.post("/recognize_sequence", response_model=RecognitionResult)
+def recognize_sequence(payload: SequencePayload) -> RecognitionResult:
+    """Kenali urutan frame (gestur dinamis / kata)."""
+    return predict_sequence(payload)
 
 
 @router.websocket("/ws/recognize")
