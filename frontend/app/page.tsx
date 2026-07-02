@@ -2,24 +2,30 @@ import SignRecognizer from "@/components/SignRecognizer";
 
 export default function Home() {
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
-      <header className="mb-8">
-        <h1 className="text-2xl font-bold text-white sm:text-3xl">
-          amertasign
-          <span className="text-violet-400"> — pengenalan isyarat</span>
+    <main className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
+      <header className="animate-rise mb-10">
+        <span className="eyebrow mb-4">
+          <span className="dot-live h-1.5 w-1.5 rounded-full bg-emerald-400" />
+          Real-time · BISINDO &amp; SIBI
+        </span>
+        <h1 className="font-display text-4xl font-bold tracking-tight text-white sm:text-5xl">
+          Isyarat jadi <span className="gradient-text">teks</span>,
+          <br className="hidden sm:block" /> langsung dari kamera.
         </h1>
-        <p className="mt-2 text-zinc-400">
-          Arahkan tangan ke kamera. Sistem mengenali isyarat{" "}
-          <span className="text-zinc-200">BISINDO</span> &amp;{" "}
-          <span className="text-zinc-200">SIBI</span> lalu menampilkan teksnya.
+        <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-[var(--text-dim)]">
+          Arahkan tangan ke kamera — sistem membaca landmark gerakanmu dan
+          menerjemahkannya menjadi huruf, kata, hingga kalimat.
         </p>
       </header>
 
-      <SignRecognizer />
+      <div className="animate-rise delay-2">
+        <SignRecognizer />
+      </div>
 
-      <footer className="mt-12 text-xs text-zinc-600">
-        Landmark diproses di browser (MediaPipe). Video mentah tidak dikirim ke
-        server.
+      <footer className="animate-rise delay-4 mt-14 flex items-center gap-2 text-xs text-[var(--text-dim)]">
+        <span className="chip chip-mono">🔒 privasi</span>
+        Landmark diproses di browser (MediaPipe) — video mentah tidak pernah
+        meninggalkan perangkatmu.
       </footer>
     </main>
   );

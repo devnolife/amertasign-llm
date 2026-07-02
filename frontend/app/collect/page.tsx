@@ -2,26 +2,30 @@ import Recorder from "@/components/Recorder";
 
 export default function CollectPage() {
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
-      <header className="mb-8">
-        <h1 className="text-2xl font-bold text-white sm:text-3xl">
-          Studio data
-          <span className="text-violet-400"> — rekam & latih</span>
+    <main className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
+      <header className="animate-rise mb-10">
+        <span className="eyebrow mb-4">Dataset builder</span>
+        <h1 className="font-display text-4xl font-bold tracking-tight text-white sm:text-5xl">
+          Studio <span className="gradient-text">data</span>
         </h1>
-        <p className="mt-2 text-zinc-400">
+        <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-[var(--text-dim)]">
           Rekam sampel gestur berlabel untuk membangun dataset, lalu latih model
           abjad. Mulai dari beberapa huruf, perbanyak sampel tiap label.
         </p>
       </header>
 
-      <Recorder />
+      <div className="animate-rise delay-2">
+        <Recorder />
+      </div>
 
-      <section className="mt-10 rounded-xl border border-zinc-800 bg-zinc-900/40 p-5 text-sm text-zinc-400">
-        <h2 className="mb-2 font-semibold text-zinc-200">Tips perekaman</h2>
-        <ul className="list-disc space-y-1 pl-5">
+      <section className="card animate-rise delay-4 mt-10 p-6 text-sm text-[var(--text-dim)]">
+        <h2 className="font-display mb-3 text-base font-semibold text-white">
+          Tips perekaman
+        </h2>
+        <ul className="list-disc space-y-1.5 pl-5">
           <li>Pencahayaan cukup; tangan terlihat penuh dalam frame.</li>
           <li>
-            Kumpulkan ≥ 20–30 sampel per huruf dengan variasi sudut & jarak.
+            Kumpulkan ≥ 20–30 sampel per huruf dengan variasi sudut &amp; jarak.
           </li>
           <li>
             BISINDO memakai dua tangan; SIBI (abjad) cukup satu tangan dominan.

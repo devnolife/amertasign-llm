@@ -20,6 +20,9 @@ import {
 } from "@/lib/config";
 import type { HandLandmarks, Mode, RecognitionResult, Stage } from "@/lib/types";
 
+// Jendela majority-vote agar hasil abjad live tidak berkedip antar-huruf.
+const SMOOTH_WINDOW = 5;
+
 export default function SignRecognizer() {
   const [mode, setMode] = useState<Mode>("BISINDO");
   const [stage, setStage] = useState<Stage>("abjad");
@@ -32,6 +35,7 @@ export default function SignRecognizer() {
   const modeRef = useRef<Mode>(mode);
   const stageRef = useRef<Stage>(stage);
   const lastSendRef = useRef(0);
+  const smoothBufRef = useRef<{ text: string; confidence: number }[]>([]);
 
   // Buffer segmentasi untuk mode kata/kalimat.
   const seqBufferRef = useRef<HandLandmarks[][]>([]);
@@ -48,7 +52,42 @@ export default function SignRecognizer() {
   const resetSegmentation = useCallback(() => {
     seqBufferRef.current = [];
     gapRef.current = 0;
+    smoothBufRef.current = [];
     setCapturing(false);
+  }, []);
+
+  // Stabilkan hasil streaming abjad: tampilkan label mayoritas dari beberapa
+  // frame terakhir (mengurangi kedipan antar-huruf saat transisi pose).
+  const handleStreamResult = useCallback((res: RecognitionResult) => {
+    if (stageRef.current !== "abjad" || !res.model_loaded || !res.text) {
+      smoothBufRef.current = [];
+      setResult(res);
+      return;
+    }
+    const buf = smoothBufRef.current;
+    buf.push({ text: res.text, confidence: res.confidence });
+    if (buf.length > SMOOTH_WINDOW) buf.shift();
+
+    const tally = new Map<string, { count: number; confSum: number }>();
+    for (const item of buf) {
+      const t = tally.get(item.text) ?? { count: 0, confSum: 0 };
+      t.count += 1;
+      t.confSum += item.confidence;
+      tally.set(item.text, t);
+    }
+    let bestLabel = res.text;
+    let best = { count: 0, confSum: 0 };
+    for (const [labelKey, t] of tally) {
+      if (t.count > best.count) {
+        bestLabel = labelKey;
+        best = t;
+      }
+    }
+    setResult({
+      ...res,
+      text: bestLabel,
+      confidence: best.count > 0 ? best.confSum / best.count : res.confidence,
+    });
   }, []);
 
   const handleStageChange = useCallback(
@@ -121,12 +160,12 @@ export default function SignRecognizer() {
   const tracking = useHandTracking({ onFrame: handleFrame });
 
   const startCamera = useCallback(async () => {
-    const socket = new RecognitionSocket(setResult, setSocketStatus);
+    const socket = new RecognitionSocket(handleStreamResult, setSocketStatus);
     socket.connect();
     socketRef.current = socket;
     resetSegmentation();
     await tracking.start();
-  }, [tracking, resetSegmentation]);
+  }, [tracking, resetSegmentation, handleStreamResult]);
 
   const stopCamera = useCallback(() => {
     tracking.stop();

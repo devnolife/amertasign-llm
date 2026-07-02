@@ -41,11 +41,7 @@ function SegButton({
     <button
       type="button"
       onClick={onClick}
-      className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-        active
-          ? "bg-violet-600 text-white shadow"
-          : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-      }`}
+      className={`seg flex-1 ${active ? "seg--active" : ""}`}
     >
       {children}
     </button>
@@ -65,12 +61,12 @@ export default function Controls({
   const status = STATUS_META[socketStatus];
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="card flex flex-col gap-5 p-5">
       <div>
-        <p className="text-xs uppercase tracking-wide text-zinc-500 mb-2">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-dim)]">
           Sistem isyarat
         </p>
-        <div className="flex gap-2">
+        <div className="seg-group">
           {MODES.map((m) => (
             <SegButton key={m} active={mode === m} onClick={() => onModeChange(m)}>
               {m}
@@ -80,10 +76,10 @@ export default function Controls({
       </div>
 
       <div>
-        <p className="text-xs uppercase tracking-wide text-zinc-500 mb-2">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-dim)]">
           Tahap
         </p>
-        <div className="flex gap-2">
+        <div className="seg-group">
           {STAGES.map((s) => (
             <SegButton
               key={s.value}
@@ -101,17 +97,13 @@ export default function Controls({
           type="button"
           onClick={onToggleCamera}
           disabled={loading}
-          className={`px-5 py-2.5 rounded-lg font-semibold transition-colors disabled:opacity-60 ${
-            cameraOn
-              ? "bg-rose-600 hover:bg-rose-500 text-white"
-              : "bg-emerald-600 hover:bg-emerald-500 text-white"
-          }`}
+          className={`btn ${cameraOn ? "btn-danger" : "btn-success"}`}
         >
-          {loading ? "Memuat…" : cameraOn ? "Stop kamera" : "Mulai kamera"}
+          {loading ? "Memuat…" : cameraOn ? "■ Stop kamera" : "▶ Mulai kamera"}
         </button>
 
-        <span className="flex items-center gap-2 text-sm text-zinc-400">
-          <span className={`h-2.5 w-2.5 rounded-full ${status.dot}`} />
+        <span className="chip chip-mono">
+          <span className={`h-2 w-2 rounded-full ${status.dot}`} />
           {status.label}
         </span>
       </div>

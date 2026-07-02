@@ -38,37 +38,110 @@ class TrainResult:
     note: Optional[str] = None
 
 
-def _collect_static_samples(mode: str, stage: str) -> tuple[np.ndarray, list[str]]:
+def _collect_static_samples(
+    mode: str, stage: str
+) -> tuple[np.ndarray, list[str], list[float]]:
     X: list[np.ndarray] = []
     y: list[str] = []
+    ts: list[float] = []
     for rec in iter_records():
         if rec.mode != mode or rec.stage != stage or rec.num_frames != 1:
             continue
         X.append(load_features(rec).reshape(-1))
         y.append(rec.label)
+        ts.append(rec.created_at)
     if not X:
-        return np.empty((0, 0), dtype=np.float32), []
-    return np.stack(X), y
+        return np.empty((0, 0), dtype=np.float32), [], []
+    return np.stack(X), y, ts
 
 
 def _augment(X: np.ndarray, y: list[str], times: int, sigma: float) -> tuple[np.ndarray, list[str]]:
-    if times <= 0:
+    """Augmentasi geometris: rotasi in-plane + skala acak per sampel + jitter kecil.
+
+    Fitur adalah blok-blok 63 dim (21 titik xyz per tangan, wrist-origin), sehingga
+    rotasi/skala bisa diterapkan langsung pada titik-titiknya. Jauh lebih efektif
+    daripada noise gaussian murni karena meniru variasi pose nyata.
+    """
+    if times <= 0 or X.shape[0] == 0:
         return X, y
+    from app.ml.normalize import FEATURES_PER_HAND
+
+    n, d = X.shape
+    if d % FEATURES_PER_HAND != 0:
+        # Dimensi tak terduga -> fallback jitter gaussian.
+        parts = [X]
+        labels = list(y)
+        rng = np.random.default_rng(42)
+        for _ in range(times):
+            parts.append(X + rng.normal(0.0, sigma, size=X.shape).astype(np.float32))
+            labels.extend(y)
+        return np.concatenate(parts, axis=0), labels
+
+    n_blocks = d // FEATURES_PER_HAND
+    rng = np.random.default_rng(42)
     parts = [X]
     labels = list(y)
-    rng = np.random.default_rng(42)
     for _ in range(times):
-        parts.append(X + rng.normal(0.0, sigma, size=X.shape).astype(np.float32))
+        pts = X.reshape(n, n_blocks, 21, 3).copy()
+        # Satu transformasi per sampel agar konsisten antar tangan/frame.
+        angles = rng.normal(0.0, np.deg2rad(8.0), size=n)
+        scales = rng.uniform(0.92, 1.08, size=n)
+        cos, sin = np.cos(angles), np.sin(angles)
+        x_old = pts[..., 0].copy()
+        y_old = pts[..., 1].copy()
+        c = cos[:, None, None]
+        s = sin[:, None, None]
+        pts[..., 0] = c * x_old - s * y_old
+        pts[..., 1] = s * x_old + c * y_old
+        pts *= scales[:, None, None, None]
+        pts += rng.normal(0.0, sigma, size=pts.shape)
+        # Slot tangan kosong (semua nol) harus tetap nol.
+        mask = (X.reshape(n, n_blocks, 21, 3) == 0).all(axis=(2, 3))
+        pts[mask] = 0.0
+        parts.append(pts.reshape(n, d).astype(np.float32))
         labels.extend(y)
     return np.concatenate(parts, axis=0), labels
 
 
+def _temporal_split(
+    X: np.ndarray, y: list[str], ts: list[float], test_size: float
+) -> tuple[np.ndarray, np.ndarray, list[str], list[str]]:
+    """Split train/val berbasis waktu per label.
+
+    Auto-capture menghasilkan frame beruntun yang nyaris identik; split acak
+    membuat duplikat bocor ke validasi (akurasi menipu). Dengan menahan sampel
+    TERBARU tiap label sebagai validasi, evaluasi jadi jujur terhadap sesi baru.
+    """
+    y_arr = np.asarray(y)
+    ts_arr = np.asarray(ts)
+    train_idx: list[int] = []
+    val_idx: list[int] = []
+    for label in np.unique(y_arr):
+        idx = np.where(y_arr == label)[0]
+        idx = idx[np.argsort(ts_arr[idx])]
+        if len(idx) < 3:
+            train_idx.extend(idx.tolist())
+            continue
+        n_val = max(1, int(round(len(idx) * test_size)))
+        train_idx.extend(idx[:-n_val].tolist())
+        val_idx.extend(idx[-n_val:].tolist())
+    if not val_idx:  # dataset terlalu kecil -> evaluasi pada train (dgn catatan)
+        val_idx = train_idx
+    return (
+        X[train_idx],
+        X[val_idx],
+        [y[i] for i in train_idx],
+        [y[i] for i in val_idx],
+    )
+
+
 def _collect_sequence_samples(
     mode: str, stage: str, seq_len: int
-) -> tuple[np.ndarray, list[str]]:
+) -> tuple[np.ndarray, list[str], list[float]]:
     """Kumpulkan sampel urutan (num_frames>1), resample ke seq_len, lalu flatten."""
     X: list[np.ndarray] = []
     y: list[str] = []
+    ts: list[float] = []
     for rec in iter_records():
         if rec.mode != mode or rec.stage != stage or rec.num_frames <= 1:
             continue
@@ -77,9 +150,10 @@ def _collect_sequence_samples(
             continue
         X.append(resample_sequence(seq, seq_len).reshape(-1))
         y.append(rec.label)
+        ts.append(rec.created_at)
     if not X:
-        return np.empty((0, 0), dtype=np.float32), []
-    return np.stack(X), y
+        return np.empty((0, 0), dtype=np.float32), [], []
+    return np.stack(X), y, ts
 
 
 def _fit_and_save(
@@ -90,6 +164,7 @@ def _fit_and_save(
     augment_times: int,
     augment_sigma: float,
     test_size: float,
+    ts: Optional[list[float]] = None,
     extra_bundle: Optional[dict] = None,
 ) -> TrainResult:
     """Inti training bersama: split, augmentasi, latih MLP, simpan bundle."""
@@ -107,13 +182,22 @@ def _fit_and_save(
             note="Butuh >=2 kelas & cukup sampel. Kumpulkan data lebih banyak via /collect.",
         )
 
-    stratify = y if min(np.bincount(np.unique(y, return_inverse=True)[1])) >= 2 else None
-    X_train, X_val, y_train, y_val = train_test_split(
-        X, y, test_size=test_size, random_state=42, stratify=stratify
-    )
+    if ts is not None and len(ts) == X.shape[0]:
+        # Split temporal per label: sampel terbaru jadi validasi (anti-bocor
+        # untuk frame beruntun yang nyaris identik dari auto-capture).
+        X_train, X_val, y_train, y_val = _temporal_split(X, y, ts, test_size)
+    else:
+        stratify = (
+            y if min(np.bincount(np.unique(y, return_inverse=True)[1])) >= 2 else None
+        )
+        X_train, X_val, y_train, y_val = train_test_split(
+            X, y, test_size=test_size, random_state=42, stratify=stratify
+        )
 
     X_train_aug, y_train_aug = _augment(X_train, list(y_train), augment_times, augment_sigma)
 
+    # Catatan: early_stopping sklearn bermasalah dgn label string (isnan) ->
+    # andalkan konvergensi adam (tol + n_iter_no_change pada loss training).
     clf = Pipeline(
         [
             ("scaler", StandardScaler()),
@@ -122,8 +206,9 @@ def _fit_and_save(
                 MLPClassifier(
                     hidden_layer_sizes=(128, 64),
                     activation="relu",
-                    max_iter=500,
+                    max_iter=800,
                     early_stopping=False,
+                    n_iter_no_change=20,
                     random_state=42,
                 ),
             ),
@@ -166,9 +251,9 @@ def train_alphabet(
     augment_sigma: float = 0.01,
     test_size: float = 0.2,
 ) -> TrainResult:
-    X, y = _collect_static_samples(mode, stage)
+    X, y, ts = _collect_static_samples(mode, stage)
     return _fit_and_save(
-        X, y, mode, stage, augment_times, augment_sigma, test_size
+        X, y, mode, stage, augment_times, augment_sigma, test_size, ts=ts
     )
 
 
@@ -181,7 +266,7 @@ def train_words(
     test_size: float = 0.2,
 ) -> TrainResult:
     """Latih classifier kata dari sampel urutan (resample ke seq_len lalu flatten)."""
-    X, y = _collect_sequence_samples(mode, stage, seq_len)
+    X, y, ts = _collect_sequence_samples(mode, stage, seq_len)
     return _fit_and_save(
         X,
         y,
@@ -190,13 +275,14 @@ def train_words(
         augment_times,
         augment_sigma,
         test_size,
+        ts=ts,
         extra_bundle={"seq_len": seq_len},
     )
 
 
 def confusion(mode: str, stage: str = "abjad") -> dict:
     """Confusion matrix sederhana memakai model tersimpan pada seluruh sampel."""
-    X, y = _collect_static_samples(mode, stage)
+    X, y, _ts = _collect_static_samples(mode, stage)
     model_path = settings.models_dir / f"{mode}_{stage}.joblib"
     if X.shape[0] == 0 or not model_path.exists():
         return {"labels": [], "matrix": []}

@@ -170,54 +170,46 @@ export default function Recorder() {
         hint='Kamera mati — tekan "Mulai kamera" untuk merekam'
       />
 
-      <div className="flex flex-col gap-5">
+      <div className="card flex flex-col gap-5 p-5">
         {!tracking.cameraOn ? (
           <button
             type="button"
             onClick={() => void tracking.start()}
             disabled={tracking.loading}
-            className="px-5 py-2.5 rounded-lg font-semibold bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-60"
+            className="btn btn-success"
           >
-            {tracking.loading ? "Memuat…" : "Mulai kamera"}
+            {tracking.loading ? "Memuat…" : "▶ Mulai kamera"}
           </button>
         ) : (
           <button
             type="button"
             onClick={tracking.stop}
-            className="px-5 py-2.5 rounded-lg font-semibold bg-rose-600 hover:bg-rose-500 text-white"
+            className="btn btn-danger"
           >
-            Stop kamera
+            ■ Stop kamera
           </button>
         )}
 
-        <div className="flex gap-2">
+        <div className="seg-group">
           {MODES.map((m) => (
             <button
               key={m}
               type="button"
               onClick={() => setMode(m)}
-              className={`flex-1 px-3 py-2 text-sm rounded-lg ${
-                mode === m
-                  ? "bg-violet-600 text-white"
-                  : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-              }`}
+              className={`seg flex-1 ${mode === m ? "seg--active" : ""}`}
             >
               {m}
             </button>
           ))}
         </div>
 
-        <div className="flex gap-2">
+        <div className="seg-group">
           {STAGES.map((s) => (
             <button
               key={s.value}
               type="button"
               onClick={() => setStage(s.value)}
-              className={`flex-1 px-3 py-2 text-sm rounded-lg ${
-                stage === s.value
-                  ? "bg-violet-600 text-white"
-                  : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-              }`}
+              className={`seg flex-1 ${stage === s.value ? "seg--active" : ""}`}
             >
               {s.label}
             </button>
@@ -225,17 +217,27 @@ export default function Recorder() {
         </div>
 
         <div>
-          <label className="text-xs uppercase tracking-wide text-zinc-500">
+          <label className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-dim)]">
             Label {stage === "abjad" ? "(huruf/angka)" : "(kata)"}
           </label>
-          <div className="mt-1 flex items-center gap-2">
+          <div className="mt-1.5 flex items-center gap-2">
             <input
               value={label}
               onChange={(e) => setLabel(e.target.value)}
               placeholder={stage === "abjad" ? "A" : "makan"}
-              className="flex-1 rounded-lg bg-zinc-900 border border-zinc-700 px-3 py-2 text-white focus:border-violet-500 focus:outline-none"
+              className="flex-1 rounded-xl px-3.5 py-2.5 text-white outline-none transition-colors"
+              style={{
+                background: "rgba(10,12,20,0.6)",
+                border: "1px solid var(--border)",
+              }}
+              onFocus={(e) =>
+                (e.currentTarget.style.borderColor = "var(--border-strong)")
+              }
+              onBlur={(e) =>
+                (e.currentTarget.style.borderColor = "var(--border)")
+              }
             />
-            <span className="text-sm text-zinc-400 whitespace-nowrap">
+            <span className="chip chip-mono whitespace-nowrap">
               {labelCount} sampel
             </span>
           </div>
@@ -246,22 +248,18 @@ export default function Recorder() {
             type="button"
             onClick={() => void captureStatic()}
             disabled={!tracking.cameraOn || busy}
-            className="px-5 py-3 rounded-lg font-semibold bg-violet-600 hover:bg-violet-500 text-white disabled:opacity-50"
+            className="btn btn-primary py-3"
           >
-            Tangkap sampel ({tracking.handsDetected} tangan)
+            ◉ Tangkap sampel ({tracking.handsDetected} tangan)
           </button>
         ) : (
           <button
             type="button"
             onClick={() => void toggleSequence()}
             disabled={!tracking.cameraOn || busy}
-            className={`px-5 py-3 rounded-lg font-semibold text-white disabled:opacity-50 ${
-              recording
-                ? "bg-rose-600 hover:bg-rose-500"
-                : "bg-violet-600 hover:bg-violet-500"
-            }`}
+            className={`btn py-3 ${recording ? "btn-danger" : "btn-primary"}`}
           >
-            {recording ? "Stop & simpan urutan" : "Mulai rekam urutan"}
+            {recording ? "■ Stop & simpan urutan" : "● Mulai rekam urutan"}
           </button>
         )}
 
@@ -274,19 +272,33 @@ export default function Recorder() {
               ? "Tahap kalimat memakai LLM (Fase 5), bukan training classifier"
               : ""
           }
-          className="px-5 py-2.5 rounded-lg font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-100 disabled:opacity-50"
+          className="btn btn-ghost"
         >
-          Latih model {stage === "kata" ? "kata" : "abjad"} ({mode})
+          ⚡ Latih model {stage === "kata" ? "kata" : "abjad"} ({mode})
         </button>
 
         {message && (
-          <div className="rounded-lg bg-zinc-900 border border-zinc-800 p-3 text-sm text-zinc-300">
+          <div
+            className="rounded-xl p-3 text-sm"
+            style={{
+              border: "1px solid var(--border)",
+              background: "rgba(10,12,20,0.6)",
+              color: "var(--text)",
+            }}
+          >
             {message}
           </div>
         )}
 
         {trainResult && !trainResult.note && (
-          <div className="rounded-lg bg-emerald-950/40 border border-emerald-900/50 p-3 text-sm text-emerald-200">
+          <div
+            className="rounded-xl p-3 text-sm"
+            style={{
+              border: "1px solid rgba(52,211,153,0.25)",
+              background: "rgba(6,78,59,0.25)",
+              color: "#a7f3d0",
+            }}
+          >
             Train {(trainResult.train_accuracy * 100).toFixed(0)}% / Val{" "}
             {(trainResult.val_accuracy * 100).toFixed(0)}% · {trainResult.n_samples} sampel ·{" "}
             {trainResult.labels.join(", ")}
@@ -295,18 +307,16 @@ export default function Recorder() {
 
         {Object.keys(labelsForStage).length > 0 && (
           <div>
-            <p className="text-xs uppercase tracking-wide text-zinc-500 mb-2">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-dim)]">
               Terkumpul ({mode}/{stage})
             </p>
             <div className="flex flex-wrap gap-1.5">
               {Object.entries(labelsForStage)
                 .sort(([a], [b]) => a.localeCompare(b))
                 .map(([lbl, count]) => (
-                  <span
-                    key={lbl}
-                    className="px-2 py-1 rounded-md bg-zinc-800 text-xs text-zinc-300"
-                  >
-                    {lbl} <span className="text-zinc-500">{count}</span>
+                  <span key={lbl} className="chip chip-mono">
+                    {lbl}
+                    <span className="text-[var(--text-dim)]">{count}</span>
                   </span>
                 ))}
             </div>

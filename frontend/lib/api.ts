@@ -24,8 +24,8 @@ export class RecognitionSocket {
 
   constructor(
     private readonly onResult: ResultHandler,
-    private readonly onStatus: StatusHandler = () => {},
-  ) {}
+    private readonly onStatus: StatusHandler = () => { },
+  ) { }
 
   connect(): void {
     this.shouldRun = true;
@@ -149,6 +149,22 @@ export async function trainModel(
   });
   if (!res.ok) throw new Error(`train gagal: ${res.status}`);
   return (await res.json()) as TrainResult;
+}
+
+// Confusion matrix model tersimpan — untuk melihat huruf yang sering tertukar.
+export interface ConfusionResult {
+  labels: string[];
+  matrix: number[][];
+}
+
+export async function getConfusion(
+  mode: Mode,
+  stage: Stage = "abjad",
+): Promise<ConfusionResult> {
+  const params = new URLSearchParams({ mode, stage });
+  const res = await fetch(`${API_URL}/train/confusion?${params}`);
+  if (!res.ok) throw new Error(`confusion gagal: ${res.status}`);
+  return (await res.json()) as ConfusionResult;
 }
 
 // ───── Penyusunan kalimat dari gloss (Fase 5) ─────

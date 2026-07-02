@@ -37,25 +37,22 @@ export default function SentenceComposer({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-xl bg-zinc-900 border border-zinc-800 p-5">
+      <div className="card p-5">
         <div className="mb-2 flex items-center justify-between">
-          <p className="text-xs uppercase tracking-wide text-zinc-500">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-dim)]">
             Gloss terkumpul
           </p>
-          <span className="text-xs text-zinc-500">{gloss.length} token</span>
+          <span className="chip chip-mono">{gloss.length} token</span>
         </div>
 
         {gloss.length === 0 ? (
-          <p className="text-sm text-zinc-600">
+          <p className="text-sm text-[var(--text-dim)]">
             Lakukan isyarat kata satu per satu — hasilnya terkumpul di sini.
           </p>
         ) : (
           <div className="flex flex-wrap gap-1.5">
             {gloss.map((g, i) => (
-              <span
-                key={`${g}-${i}`}
-                className="rounded-md bg-zinc-800 px-2.5 py-1 text-sm text-zinc-200"
-              >
+              <span key={`${g}-${i}`} className="chip">
                 {g}
               </span>
             ))}
@@ -67,15 +64,15 @@ export default function SentenceComposer({
             type="button"
             onClick={() => void compose()}
             disabled={busy || gloss.length === 0}
-            className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500 disabled:opacity-50"
+            className="btn btn-primary"
           >
-            {busy ? "Menyusun…" : "Susun kalimat"}
+            {busy ? "Menyusun…" : "✨ Susun kalimat"}
           </button>
           <button
             type="button"
             onClick={onRemoveLast}
             disabled={gloss.length === 0}
-            className="rounded-lg bg-zinc-800 px-4 py-2 text-sm text-zinc-200 hover:bg-zinc-700 disabled:opacity-50"
+            className="btn btn-ghost"
           >
             Hapus terakhir
           </button>
@@ -86,7 +83,7 @@ export default function SentenceComposer({
               setResult(null);
             }}
             disabled={gloss.length === 0}
-            className="rounded-lg bg-zinc-800 px-4 py-2 text-sm text-zinc-200 hover:bg-zinc-700 disabled:opacity-50"
+            className="btn btn-ghost"
           >
             Bersihkan
           </button>
@@ -94,12 +91,14 @@ export default function SentenceComposer({
       </div>
 
       {result && (
-        <div className="rounded-xl border border-violet-900/50 bg-violet-950/30 p-5">
-          <p className="text-xs uppercase tracking-wide text-violet-400 mb-2">
+        <div className="card card--glow animate-rise p-5">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#c4b5fd]">
             Kalimat
           </p>
-          <p className="text-xl font-semibold text-white">{result.sentence}</p>
-          <p className="mt-2 text-xs text-zinc-500">
+          <p className="font-display text-2xl font-semibold text-white">
+            {result.sentence}
+          </p>
+          <p className="chip-mono mt-2 text-xs text-[var(--text-dim)]">
             via {result.provider}
             {result.note ? ` · ${result.note}` : ""}
           </p>
@@ -107,7 +106,14 @@ export default function SentenceComposer({
       )}
 
       {error && (
-        <div className="rounded-lg bg-rose-950/50 border border-rose-900/60 p-3 text-sm text-rose-200">
+        <div
+          className="rounded-xl p-3 text-sm"
+          style={{
+            border: "1px solid rgba(251,113,133,0.3)",
+            background: "rgba(159,18,57,0.18)",
+            color: "#fecdd3",
+          }}
+        >
           {error}
         </div>
       )}

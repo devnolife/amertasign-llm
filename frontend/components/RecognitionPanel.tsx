@@ -20,23 +20,31 @@ export default function RecognitionPanel({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-xl bg-zinc-900 border border-zinc-800 p-6 min-h-[140px] flex flex-col justify-center">
-        <p className="text-xs uppercase tracking-wide text-zinc-500 mb-2">
+      <div className="card card--glow flex min-h-[170px] flex-col justify-center p-6">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-dim)]">
           Teks terdeteksi
         </p>
-        <p className="text-5xl font-bold text-white break-words min-h-[3.5rem]">
-          {text || <span className="text-zinc-600 text-2xl">—</span>}
+        <p className="font-display min-h-[4rem] break-words text-6xl font-bold">
+          {text ? (
+            <span className="gradient-text">{text}</span>
+          ) : (
+            <span className="text-2xl text-[var(--text-dim)] opacity-50">—</span>
+          )}
         </p>
 
         {modelLoaded && confidence > 0 && (
           <div className="mt-4">
-            <div className="h-2 rounded-full bg-zinc-800 overflow-hidden">
+            <div className="h-1.5 overflow-hidden rounded-full bg-white/5">
               <div
-                className="h-full bg-violet-500 transition-all"
-                style={{ width: `${Math.round(confidence * 100)}%` }}
+                className="h-full rounded-full transition-all duration-300"
+                style={{
+                  width: `${Math.round(confidence * 100)}%`,
+                  background: "linear-gradient(90deg, #8b5cf6, #22d3ee)",
+                  boxShadow: "0 0 12px rgba(139,92,246,0.6)",
+                }}
               />
             </div>
-            <p className="text-xs text-zinc-500 mt-1">
+            <p className="chip-mono mt-1.5 text-xs text-[var(--text-dim)]">
               keyakinan {Math.round(confidence * 100)}%
             </p>
           </div>
@@ -46,12 +54,9 @@ export default function RecognitionPanel({
       {candidates.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {candidates.map((c) => (
-            <span
-              key={c.label}
-              className="px-3 py-1 rounded-full bg-zinc-800 text-zinc-300 text-sm"
-            >
-              {c.label}{" "}
-              <span className="text-zinc-500">
+            <span key={c.label} className="chip">
+              <b>{c.label}</b>
+              <span className="chip-mono text-[var(--text-dim)]">
                 {Math.round(c.confidence * 100)}%
               </span>
             </span>
@@ -60,17 +65,25 @@ export default function RecognitionPanel({
       )}
 
       {result && !modelLoaded && (
-        <div className="rounded-lg bg-amber-950/40 border border-amber-900/50 p-3 text-sm text-amber-200">
+        <div
+          className="rounded-xl p-3 text-sm"
+          style={{
+            border: "1px solid rgba(251,191,36,0.25)",
+            background: "rgba(120,53,15,0.2)",
+            color: "#fde68a",
+          }}
+        >
           {result.note ??
             "Model belum dilatih. Jalur kamera → landmark → backend sudah aktif."}
         </div>
       )}
 
-      <p className="text-xs text-zinc-500">
-        Tangan terdeteksi: <span className="text-zinc-300">{handsDetected}</span>
+      <p className="flex items-center gap-2 text-xs text-[var(--text-dim)]">
+        Tangan terdeteksi:{" "}
+        <span className="chip-mono text-white">{handsDetected}</span>
         {capturing && (
-          <span className="ml-2 inline-flex items-center gap-1 text-rose-400">
-            <span className="h-2 w-2 rounded-full bg-rose-500 animate-pulse" />
+          <span className="inline-flex items-center gap-1.5 text-rose-300">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-rose-500" />
             merekam gestur…
           </span>
         )}
