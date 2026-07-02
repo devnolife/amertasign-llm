@@ -11,7 +11,7 @@ services:
       AMERTASIGN_DATA_DIR: /data
       AMERTASIGN_MODELS_DIR: /app/models
       # CORS untuk frontend (sesuaikan bila domain berbeda)
-      AMERTASIGN_CORS_ORIGINS: '["http://localhost:3000"]'
+      AMERTASIGN_CORS_ORIGINS: '["http://localhost:3030"]'
       # LLM opsional (Fase 5). Default stub.
       AMERTASIGN_LLM_PROVIDER: stub
     volumes:
@@ -26,7 +26,7 @@ services:
         NEXT_PUBLIC_API_URL: http://localhost:8000
         NEXT_PUBLIC_WS_URL: ws://localhost:8000
     ports:
-      - "3000:3000"
+      - "3030:3000"
     depends_on:
       - backend
 

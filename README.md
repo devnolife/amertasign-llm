@@ -40,11 +40,11 @@ amertasign-llm/
 # 1) Install dependency (frontend + backend venv)
 ./scripts/setup.sh
 
-# 2) Jalankan dev (backend :8000 + frontend :3000)
+# 2) Jalankan dev (backend :8000 + frontend :3030)
 ./scripts/dev.sh
 ```
 
-Lalu buka http://localhost:3000
+Lalu buka http://localhost:3030
 
 ### Dataset (BISINDO alfabet, otomatis)
 

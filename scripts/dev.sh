@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Dev runner amertasign-llm: backend (FastAPI :8000) + frontend (Next.js :3000).
+# Dev runner amertasign-llm: backend (FastAPI :8000) + frontend (Next.js :3030).
 set -e
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -9,7 +9,7 @@ LOG_DIR="$ROOT_DIR/.dev-logs"
 mkdir -p "$LOG_DIR"
 
 BACKEND_PORT="${BACKEND_PORT:-8000}"
-FRONTEND_PORT="${FRONTEND_PORT:-3000}"
+FRONTEND_PORT="${FRONTEND_PORT:-3030}"
 
 GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; RED='\033[0;31m'; NC='\033[0m'
 log()  { echo -e "${CYAN}[dev]${NC} $1"; }

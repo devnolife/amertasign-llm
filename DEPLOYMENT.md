@@ -1,6 +1,6 @@
 # Deployment — amertasign-llm
 
-Dua layanan: **backend** (FastAPI, port 8000) dan **frontend** (Next.js, port 3000).
+Dua layanan: **backend** (FastAPI, port 8000) dan **frontend** (Next.js, port 3030).
 
 ## Opsi 1 — Docker Compose (disarankan)
 
@@ -8,7 +8,7 @@ Dua layanan: **backend** (FastAPI, port 8000) dan **frontend** (Next.js, port 30
 docker compose up --build
 ```
 
-- Frontend: http://localhost:3000
+- Frontend: http://localhost:3030
 - Backend:  http://localhost:8000 (docs: `/docs`)
 
 Data rekaman & model tersimpan di volume `amerta-data` dan `amerta-models`
@@ -41,7 +41,7 @@ cd frontend
 pnpm install && pnpm build
 NEXT_PUBLIC_API_URL=http://localhost:8000 \
 NEXT_PUBLIC_WS_URL=ws://localhost:8000 \
-pnpm start -- --port 3000
+pnpm start -- --port 3030
 ```
 
 ## Konfigurasi LLM (tahap kalimat)
