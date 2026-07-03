@@ -1,35 +1,64 @@
-# amertasign-llm — orkestrasi dev/produksi sederhana
-# Jalankan: docker compose up --build
+# amertasign-llm — orkestrasi produksi (docker compose)
+# Siapkan .env (lihat .env.example), lalu: sudo docker compose up -d --build
 services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: amerta
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set di .env}
+      POSTGRES_DB: amertasign
+    volumes:
+      - amerta-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U amerta -d amertasign"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   backend:
     build:
       context: ./backend
+    restart: unless-stopped
     ports:
       - "8000:8000"
     environment:
       AMERTASIGN_DEBUG: "false"
       AMERTASIGN_DATA_DIR: /data
       AMERTASIGN_MODELS_DIR: /app/models
-      # CORS untuk frontend (sesuaikan bila domain berbeda)
-      AMERTASIGN_CORS_ORIGINS: '["http://localhost:3030"]'
-      # LLM opsional (Fase 5). Default stub.
+      # API mobile: PostgreSQL + JWT
+      AMERTASIGN_MOBILE_DB_URL: postgresql+psycopg2://amerta:${POSTGRES_PASSWORD}@db:5432/amertasign
+      AMERTASIGN_JWT_SECRET: ${JWT_SECRET:?set di .env}
+      # CORS untuk frontend web (tunnel diizinkan via regex default)
+      AMERTASIGN_CORS_ORIGINS: '["http://localhost:3030", "http://127.0.0.1:3030"]'
       AMERTASIGN_LLM_PROVIDER: stub
     volumes:
-      - amerta-data:/data
-      - amerta-models:/app/models
+      # Reuse dataset & model hasil training di host
+      - ./data:/data
+      - ./backend/models:/app/models
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   frontend:
     build:
       context: ./frontend
       args:
-        # Browser mengakses backend lewat host; ubah bila deploy ke domain lain.
-        NEXT_PUBLIC_API_URL: http://localhost:8000
-        NEXT_PUBLIC_WS_URL: ws://localhost:8000
+        # URL backend yang dipakai BROWSER (di-bake ke bundle saat build).
+        # Untuk akses publik isi dengan URL tunnel backend di .env.
+        NEXT_PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:8000}
+        NEXT_PUBLIC_WS_URL: ${PUBLIC_WS_URL:-ws://localhost:8000}
+    restart: unless-stopped
     ports:
       - "3030:3000"
     depends_on:
       - backend
 
 volumes:
-  amerta-data:
-  amerta-models:
+  amerta-pgdata:

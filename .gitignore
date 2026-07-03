@@ -44,3 +44,8 @@ backend/models/
 .dev-logs/
 .vscode/
 .idea/
+
+# ───── Artefak runtime ─────
+data/mobile.db-shm
+data/mobile.db-wal
+*.apk
