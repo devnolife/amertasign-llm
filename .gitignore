@@ -49,3 +49,6 @@ backend/models/
 data/mobile.db-shm
 data/mobile.db-wal
 *.apk
+
+# repo terpisah (devnolife/amertasign)
+amertasign/
