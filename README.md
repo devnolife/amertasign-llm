@@ -59,6 +59,38 @@ Belum ada data bawaan. Untuk langsung punya model abjad BISINDO dari dataset pub
 ./backend/.venv/bin/python scripts/train.py --mode BISINDO --stage abjad
 ```
 
+Dataset tambahan dari **Mendeley Data** (CC BY 4.0):
+
+```bash
+./scripts/fetch-mendeley.sh
+```
+
+- **BISINDO alphabet** ([4xnkvr88tk v1](https://data.mendeley.com/datasets/4xnkvr88tk/1)) —
+  ±8.000 gambar A–Z (kamera fisheye, 7 partisipan) → `data/public/bisindo_mendeley_4xnkvr88tk/`.
+  Hasil ingest: ±5.760 sampel landmark. Digabung dataset MIT, training model abjad
+  mencapai val acc ~97% pada domain webcam biasa (split temporal per label).
+- **SIBI Dataset** ([44pbrbsnkh v3](https://data.mendeley.com/datasets/44pbrbsnkh/3)) —
+  video sampel (abjad, angka, imbuhan, kalimat) + metadata CSV →
+  `data/public/sibi_mendeley_44pbrbsnkh/`. Video lengkap memerlukan
+  Data Use Agreement (PDF DUA ada di folder dataset).
+
+### Dataset kata (video → urutan landmark)
+
+Video gestur dinamis di-ingest dengan `scripts/ingest_video.py`
+(struktur input: subfolder per label berisi video):
+
+```bash
+./backend/.venv/bin/python scripts/ingest_video.py \
+    --input-dir data/public/sibi_mendeley_44pbrbsnkh/sibi-dataset-dib-example-face-blurred/number \
+    --mode SIBI --stage kata
+./backend/.venv/bin/python scripts/train.py --mode SIBI --stage kata
+```
+
+Sampel SIBI Mendeley hanya berisi **1 video per label (1 signer)** — cukup untuk
+menguji pipeline end-to-end (model `SIBI_kata.joblib` = demo/seed), tetapi belum
+memadai untuk model produksi. Untuk data kata yang layak: ajukan DUA dataset SIBI
+lengkap (20 signer) lalu ingest folder videonya, dan/atau rekam sendiri via `/collect`.
+
 Atau rekam sendiri (terutama untuk **kata**) via halaman `/collect`.
 Detail & sumber lain: lihat `docs/datasets.md`.
 

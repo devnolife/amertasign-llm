@@ -42,6 +42,12 @@ Tidak di-otomatiskan karena butuh login / persetujuan (DUA) / API key:
 Untuk dataset gambar apa pun, susun jadi folder per-label lalu jalankan
 `ingest_public.py --input-dir <folder> --mode SIBI|BISINDO --stage abjad`.
 
+Untuk dataset **video** (gestur dinamis / kata), susun folder per-label berisi video
+lalu jalankan `ingest_video.py --input-dir <folder> --mode SIBI|BISINDO --stage kata`
+dan latih dengan `train.py --stage kata`. Sampel publik SIBI (44pbrbsnkh) hanya berisi
+1 video/label (1 signer) — cukup untuk uji pipeline; dataset lengkap (20 signer)
+memerlukan DUA.
+
 ## 2. Rekam sendiri
 
 Gunakan halaman **`/collect`** (Studio data) untuk merekam sampel berlabel langsung
