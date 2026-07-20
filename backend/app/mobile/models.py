@@ -23,6 +23,8 @@ class User(Base):
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=new_id)
     username: Mapped[str] = mapped_column(String(20), unique=True, index=True)
+    email: Mapped[str | None] = mapped_column(String(254), unique=True, index=True, nullable=True)
+    google_id: Mapped[str | None] = mapped_column(String(128), unique=True, index=True, nullable=True)
     password_hash: Mapped[str] = mapped_column(String(128))
     name: Mapped[str] = mapped_column(String(64))
     avatar_url: Mapped[str | None] = mapped_column(String(512), nullable=True)

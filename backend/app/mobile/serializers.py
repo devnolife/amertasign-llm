@@ -15,6 +15,8 @@ def user_to_dict(user: User) -> dict:
         "id": user.id,
         "name": user.name,
         "username": user.username,
+        "email": user.email,
+        "hasPassword": bool(user.password_hash),
         "preferredSignLanguage": user.preferred_sign_language,
         "streak": user.streak,
         "avatarUrl": user.avatar_url,

@@ -32,6 +32,9 @@ services:
       # CORS untuk frontend web (tunnel diizinkan via regex default)
       AMERTASIGN_CORS_ORIGINS: '["http://localhost:3030", "http://127.0.0.1:3030"]'
       AMERTASIGN_LLM_PROVIDER: stub
+      AMERTASIGN_GOOGLE_CLIENT_IDS: ${GOOGLE_CLIENT_IDS:-}
+      AMERTASIGN_GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      AMERTASIGN_PUBLIC_BASE_URL: ${PUBLIC_API_URL:-}
     volumes:
       # Reuse dataset & model hasil training di host
       - ./data:/data

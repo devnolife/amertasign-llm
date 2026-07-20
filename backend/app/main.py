@@ -4,10 +4,12 @@ from __future__ import annotations
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.mobile.db import init_db
 from app.mobile.deps import ApiError
+from app.mobile.sign_media import sync_sign_media_dictionary
 from app.routers import (
     compose,
     data,
@@ -15,6 +17,7 @@ from app.routers import (
     mobile_auth,
     mobile_dictionary,
     mobile_history,
+    mobile_translation,
     mobile_users,
     recognize,
     train,
@@ -22,6 +25,8 @@ from app.routers import (
 
 app = FastAPI(title=settings.app_name, debug=settings.debug)
 init_db()
+if settings.auto_sync_sign_media:
+    sync_sign_media_dictionary()
 
 
 @app.exception_handler(ApiError)
@@ -51,7 +56,14 @@ app.include_router(compose.router)
 app.include_router(mobile_auth.router)
 app.include_router(mobile_history.router)
 app.include_router(mobile_dictionary.router)
+app.include_router(mobile_translation.router)
 app.include_router(mobile_users.router)
+
+# Media peraga hasil scripts/build_sign_media.py. Folder selalu dibuat agar
+# backend tetap bisa start sebelum proses build media pertama.
+sign_media_dir = settings.data_dir / "public" / "sign_media"
+sign_media_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/api/v1/media", StaticFiles(directory=sign_media_dir), name="sign-media")
 
 
 @app.get("/")

@@ -1,7 +1,7 @@
 """Koneksi database SQLite (SQLAlchemy) untuk API mobile."""
 from __future__ import annotations
 
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, inspect, text
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from app.config import settings
@@ -38,3 +38,18 @@ def init_db() -> None:
     from app.mobile import models  # noqa: F401 (register mapping)
 
     Base.metadata.create_all(bind=engine)
+
+    # Migrasi ringan untuk database yang dibuat sebelum dukungan email/Google.
+    # Alembic belum dipakai pada proyek ini; ALTER bersifat idempoten.
+    columns = {column["name"] for column in inspect(engine).get_columns("users")}
+    with engine.begin() as connection:
+        if "email" not in columns:
+            connection.execute(text("ALTER TABLE users ADD COLUMN email VARCHAR(254)"))
+        if "google_id" not in columns:
+            connection.execute(text("ALTER TABLE users ADD COLUMN google_id VARCHAR(128)"))
+        connection.execute(
+            text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_email ON users (email)")
+        )
+        connection.execute(
+            text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_google_id ON users (google_id)")
+        )

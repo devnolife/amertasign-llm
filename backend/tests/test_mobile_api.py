@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 def client(tmp_path, monkeypatch):
     monkeypatch.setenv("AMERTASIGN_MOBILE_DB_URL", f"sqlite:///{tmp_path / 'mobile.db'}")
     monkeypatch.setenv("AMERTASIGN_JWT_SECRET", "test-secret-panjang-minimal-32-karakter!!")
+    monkeypatch.setenv("AMERTASIGN_AUTO_SYNC_SIGN_MEDIA", "false")
 
     # Import semua modul dulu, lalu reload berurutan agar Base & settings segar.
     import app.config as config
@@ -22,6 +23,7 @@ def client(tmp_path, monkeypatch):
     import app.mobile.security as security
     import app.mobile.deps as deps
     import app.mobile.serializers as serializers
+    import app.mobile.sign_media as sign_media
 
     importlib.reload(config)
     importlib.reload(db)
@@ -29,14 +31,17 @@ def client(tmp_path, monkeypatch):
     importlib.reload(security)
     importlib.reload(deps)
     importlib.reload(serializers)
+    importlib.reload(sign_media)
     import app.routers.mobile_auth as auth_router
     import app.routers.mobile_history as history_router
     import app.routers.mobile_dictionary as dictionary_router
+    import app.routers.mobile_translation as translation_router
     import app.routers.mobile_users as users_router
 
     importlib.reload(auth_router)
     importlib.reload(history_router)
     importlib.reload(dictionary_router)
+    importlib.reload(translation_router)
     importlib.reload(users_router)
     import app.main as main
 
@@ -204,3 +209,85 @@ def test_profile_update_and_password(client: TestClient) -> None:
 
     res = client.post("/api/v1/auth/login", json={"username": "budi.s", "password": "barubaru"})
     assert res.status_code == 200
+
+
+def test_email_profile_and_forgot_password(client: TestClient) -> None:
+    res = client.post(
+        "/api/v1/auth/register",
+        json={"username": "sari", "password": "rahasia1", "email": "sari@example.com"},
+    )
+    assert res.status_code == 200
+    data = res.json()["data"]
+    assert data["user"]["email"] == "sari@example.com"
+    assert data["user"]["hasPassword"] is True
+
+    res = client.patch(
+        "/api/v1/users/me",
+        json={"username": "sari.baru", "email": "baru@example.com"},
+        headers=auth_headers(data),
+    )
+    assert res.status_code == 200
+    assert res.json()["data"]["user"]["username"] == "sari.baru"
+
+    res = client.post(
+        "/api/v1/auth/forgot-password",
+        json={
+            "username": "sari.baru",
+            "email": "baru@example.com",
+            "newPassword": "passwordbaru",
+        },
+    )
+    assert res.status_code == 200
+    assert client.post(
+        "/api/v1/auth/login",
+        json={"username": "sari.baru", "password": "passwordbaru"},
+    ).status_code == 200
+
+    # Konfigurasi OAuth sengaja kosong pada test.
+    res = client.get("/api/v1/auth/google/start?returnUrl=amertasign%3A%2F%2Fgoogle-auth")
+    assert res.status_code == 503
+    assert res.json()["error"]["code"] == "GOOGLE_NOT_CONFIGURED"
+
+
+def test_text_to_sign_exact_and_spelling(client: TestClient) -> None:
+    import app.mobile.db as db
+    from app.mobile.models import DictionaryEntry
+
+    with db.SessionLocal() as session:
+        session.add_all(
+            [
+                DictionaryEntry(
+                    id="word-makan",
+                    word="Makan",
+                    category="kata_umum",
+                    type="bisindo",
+                    description="Gerakan makan",
+                    image_url="/api/v1/media/bisindo/kata/makan.jpg",
+                    video_url="/api/v1/media/bisindo/kata/makan.mp4",
+                ),
+                *[
+                    DictionaryEntry(
+                        id=f"letter-{letter.lower()}",
+                        word=letter,
+                        category="alfabet",
+                        type="bisindo",
+                        description=f"Huruf {letter}",
+                        image_url=f"/api/v1/media/bisindo/alfabet/{letter.lower()}.jpg",
+                        video_url="",
+                    )
+                    for letter in "ABC"
+                ],
+            ]
+        )
+        session.commit()
+
+    res = client.post(
+        "/api/v1/translate/text-to-sign",
+        json={"text": "Makan cab", "signLanguageType": "bisindo"},
+    )
+    assert res.status_code == 200, res.text
+    result = res.json()["data"]
+    assert [unit["word"] for unit in result["units"]] == ["Makan", "C", "A", "B"]
+    assert result["units"][0]["mediaType"] == "video"
+    assert result["units"][1]["matchType"] == "spelling"
+    assert result["units"][0]["videoUrl"].startswith("http://testserver/api/v1/media/")

@@ -45,6 +45,13 @@ class Settings(BaseSettings):
     access_token_minutes: int = 15
     refresh_token_days: int = 30
 
+    # Google OAuth Web flow untuk aplikasi Expo. Kosong = endpoint mengembalikan
+    # GOOGLE_NOT_CONFIGURED dengan pesan yang jelas.
+    google_client_ids: str = ""  # beberapa ID dipisahkan koma
+    google_client_secret: str = ""
+    public_base_url: str = ""
+    auto_sync_sign_media: bool = True
+
 
 settings = Settings()
 settings.models_dir.mkdir(parents=True, exist_ok=True)

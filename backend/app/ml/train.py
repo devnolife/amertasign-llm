@@ -104,13 +104,20 @@ def _augment(X: np.ndarray, y: list[str], times: int, sigma: float) -> tuple[np.
 
 
 def _temporal_split(
-    X: np.ndarray, y: list[str], ts: list[float], test_size: float
+    X: np.ndarray,
+    y: list[str],
+    ts: list[float],
+    test_size: float,
+    session_gap: float = 300.0,
 ) -> tuple[np.ndarray, np.ndarray, list[str], list[str]]:
-    """Split train/val berbasis waktu per label.
+    """Split train/val berbasis waktu per label, sadar-sesi.
 
     Auto-capture menghasilkan frame beruntun yang nyaris identik; split acak
-    membuat duplikat bocor ke validasi (akurasi menipu). Dengan menahan sampel
-    TERBARU tiap label sebagai validasi, evaluasi jadi jujur terhadap sesi baru.
+    membuat duplikat bocor ke validasi (akurasi menipu). Sampel tiap label
+    dikelompokkan menjadi SESI (jeda antar sampel > session_gap detik = sesi
+    baru), lalu sampel TERBARU tiap sesi ditahan sebagai validasi. Dengan
+    begitu tiap domain perekaman (orang/kamera/hari berbeda) tetap terwakili
+    di train, sementara kebocoran burst tetap dicegah.
     """
     y_arr = np.asarray(y)
     ts_arr = np.asarray(ts)
@@ -119,12 +126,20 @@ def _temporal_split(
     for label in np.unique(y_arr):
         idx = np.where(y_arr == label)[0]
         idx = idx[np.argsort(ts_arr[idx])]
-        if len(idx) < 3:
-            train_idx.extend(idx.tolist())
-            continue
-        n_val = max(1, int(round(len(idx) * test_size)))
-        train_idx.extend(idx[:-n_val].tolist())
-        val_idx.extend(idx[-n_val:].tolist())
+        # Pecah menjadi sesi berdasarkan jeda waktu.
+        sessions: list[list[int]] = [[int(idx[0])]]
+        for i in idx[1:]:
+            if ts_arr[i] - ts_arr[sessions[-1][-1]] > session_gap:
+                sessions.append([int(i)])
+            else:
+                sessions[-1].append(int(i))
+        for sess in sessions:
+            if len(sess) < 3:
+                train_idx.extend(sess)
+                continue
+            n_val = max(1, int(round(len(sess) * test_size)))
+            train_idx.extend(sess[:-n_val])
+            val_idx.extend(sess[-n_val:])
     if not val_idx:  # dataset terlalu kecil -> evaluasi pada train (dgn catatan)
         val_idx = train_idx
     return (

@@ -37,6 +37,7 @@ backend/models/
 *.pt
 *.onnx
 *.h5
+drive-download-*.zip
 
 # ───── Misc ─────
 .DS_Store
