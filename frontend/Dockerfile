@@ -19,8 +19,8 @@ RUN bash -lc 'cp -f node_modules/@mediapipe/tasks-vision/wasm/* public/mediapipe
 ENV NEXT_TELEMETRY_DISABLED=1
 # URL backend di-bake ke bundle browser (client-side). Override saat build:
 #   docker build --build-arg NEXT_PUBLIC_API_URL=https://api.example.com ...
-ARG NEXT_PUBLIC_API_URL=http://localhost:8000
-ARG NEXT_PUBLIC_WS_URL=ws://localhost:8000
+ARG NEXT_PUBLIC_API_URL=https://amertasign.lab-if.tech
+ARG NEXT_PUBLIC_WS_URL=wss://amertasign.lab-if.tech
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
     NEXT_PUBLIC_WS_URL=$NEXT_PUBLIC_WS_URL
 RUN pnpm build

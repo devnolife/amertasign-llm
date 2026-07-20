@@ -1,5 +1,28 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Deploy terpisah dari server AI
+
+Frontend ini TIDAK dijalankan di server AI (hpc-ai). Server AI hanya menyajikan
+API FastAPI di `https://amertasign.lab-if.tech`. Deploy frontend di mesin/platform
+lain (Vercel, VPS, dsb.) dengan env build:
+
+```bash
+NEXT_PUBLIC_API_URL=https://amertasign.lab-if.tech
+NEXT_PUBLIC_WS_URL=wss://amertasign.lab-if.tech
+```
+
+Nilai di atas sudah tersedia di `.env.production` (dipakai otomatis oleh
+`next build`) dan menjadi default `--build-arg` pada `Dockerfile`:
+
+```bash
+# Docker
+docker build -t amertasign-frontend .
+docker run -p 3000:3000 amertasign-frontend
+
+# Tanpa Docker
+pnpm install && pnpm build && node .next/standalone/server.js
+```
+
 ## Getting Started
 
 First, run the development server:
