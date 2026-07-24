@@ -49,7 +49,6 @@ DEFAULT_MODEL = ROOT / "frontend" / "public" / "mediapipe" / "models" / "hand_la
 
 def _load_detector(model_path: Path, num_hands: int):
     try:
-        import cv2  # noqa: F401
         from mediapipe.tasks.python.core.base_options import BaseOptions
         from mediapipe.tasks.python.vision import (
             HandLandmarker,
@@ -58,7 +57,7 @@ def _load_detector(model_path: Path, num_hands: int):
         )
     except ImportError as exc:  # pragma: no cover
         raise SystemExit(
-            "Butuh mediapipe & opencv-python. Install: pip install mediapipe opencv-python"
+            "Butuh mediapipe & Pillow. Install: pip install mediapipe pillow"
         ) from exc
 
     if not model_path.exists():
@@ -71,8 +70,33 @@ def _load_detector(model_path: Path, num_hands: int):
         base_options=BaseOptions(model_asset_path=str(model_path)),
         running_mode=RunningMode.IMAGE,
         num_hands=num_hands,
+        # Foto dataset sering memotong tangan di tepi frame — threshold rendah
+        # + padding (di _read_image) menaikkan tingkat deteksi signifikan.
+        min_hand_detection_confidence=0.1,
+        min_hand_presence_confidence=0.1,
     )
     return HandLandmarker.create_from_options(options)
+
+
+def _read_image(img_path: Path, max_side: int = 1024, pad_frac: float = 0.2):
+    """Baca gambar -> array RGB: koreksi EXIF, resize, dan padding tepi.
+
+    Padding membuat tangan yang terpotong tepi foto tetap 'utuh' di mata palm
+    detector MediaPipe (menaikkan yield deteksi pada foto HP).
+    """
+    import numpy as _np
+    from PIL import Image, ImageOps
+
+    try:
+        im = ImageOps.exif_transpose(Image.open(img_path)).convert("RGB")
+    except Exception:
+        return None
+    im.thumbnail((max_side, max_side))
+    w, h = im.size
+    pad = int(pad_frac * max(w, h))
+    canvas = Image.new("RGB", (w + 2 * pad, h + 2 * pad), (20, 20, 20))
+    canvas.paste(im, (pad, pad))
+    return _np.asarray(canvas)
 
 
 def _to_hands(result) -> list[dict]:
@@ -103,13 +127,13 @@ def main() -> int:
     ap.add_argument("--mode", required=True, choices=["BISINDO", "SIBI"])
     ap.add_argument("--stage", default="abjad", choices=["abjad", "kata", "kalimat"])
     ap.add_argument("--limit-per-label", type=int, default=0, help="0 = tanpa batas")
+    ap.add_argument("--min-hands", type=int, default=1, help="minimal tangan terdeteksi agar disimpan")
     ap.add_argument("--model", type=Path, default=DEFAULT_MODEL, help="path hand_landmarker.task")
     args = ap.parse_args()
 
     if not args.input_dir.is_dir():
         raise SystemExit(f"Folder tidak ditemukan: {args.input_dir}")
 
-    import cv2
     import mediapipe as mp
 
     max_hands = max_hands_for_mode(args.mode)
@@ -123,21 +147,24 @@ def main() -> int:
     total_skipped = 0
     for label_dir in label_dirs:
         label = label_dir.name
-        images = [p for p in sorted(label_dir.iterdir()) if p.suffix.lower() in IMAGE_EXTS]
+        images = [
+            p
+            for p in sorted(label_dir.iterdir())
+            if p.suffix.lower() in IMAGE_EXTS and not p.name.startswith("._")
+        ]
         if args.limit_per_label > 0:
             images = images[: args.limit_per_label]
 
         saved = 0
         for img_path in images:
-            img = cv2.imread(str(img_path))
-            if img is None:
+            rgb = _read_image(img_path)
+            if rgb is None:
                 total_skipped += 1
                 continue
-            rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
             result = detector.detect(mp_image)
             hands = _to_hands(result)
-            if not hands:
+            if len(hands) < args.min_hands:
                 total_skipped += 1
                 continue
             features = frame_to_features(hands, max_hands=max_hands)

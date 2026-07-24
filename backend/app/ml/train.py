@@ -39,13 +39,20 @@ class TrainResult:
 
 
 def _collect_static_samples(
-    mode: str, stage: str
+    mode: str,
+    stage: str,
+    created_before: Optional[float] = None,
+    created_after: Optional[float] = None,
 ) -> tuple[np.ndarray, list[str], list[float]]:
     X: list[np.ndarray] = []
     y: list[str] = []
     ts: list[float] = []
     for rec in iter_records():
         if rec.mode != mode or rec.stage != stage or rec.num_frames != 1:
+            continue
+        if created_before is not None and rec.created_at >= created_before:
+            continue
+        if created_after is not None and rec.created_at < created_after:
             continue
         X.append(load_features(rec).reshape(-1))
         y.append(rec.label)
@@ -84,8 +91,11 @@ def _augment(X: np.ndarray, y: list[str], times: int, sigma: float) -> tuple[np.
     for _ in range(times):
         pts = X.reshape(n, n_blocks, 21, 3).copy()
         # Satu transformasi per sampel agar konsisten antar tangan/frame.
-        angles = rng.normal(0.0, np.deg2rad(8.0), size=n)
-        scales = rng.uniform(0.92, 1.08, size=n)
+        # Augmentasi lebih kuat (terbukti +4pt akurasi lintas-sesi via
+        # scripts/holdout_abjad.py): rotasi ±15°, skala 0.85–1.15, translasi
+        # kecil per-tangan → model lebih tahan variasi sudut/jarak/posisi kamera.
+        angles = rng.normal(0.0, np.deg2rad(15.0), size=n)
+        scales = rng.uniform(0.85, 1.15, size=n)
         cos, sin = np.cos(angles), np.sin(angles)
         x_old = pts[..., 0].copy()
         y_old = pts[..., 1].copy()
@@ -94,6 +104,8 @@ def _augment(X: np.ndarray, y: list[str], times: int, sigma: float) -> tuple[np.
         pts[..., 0] = c * x_old - s * y_old
         pts[..., 1] = s * x_old + c * y_old
         pts *= scales[:, None, None, None]
+        # Geser kecil per blok tangan (bukan per titik) meniru pergeseran ROI.
+        pts += rng.normal(0.0, 0.03, size=(n, n_blocks, 1, 3))
         pts += rng.normal(0.0, sigma, size=pts.shape)
         # Slot tangan kosong (semua nol) harus tetap nol.
         mask = (X.reshape(n, n_blocks, 21, 3) == 0).all(axis=(2, 3))
@@ -104,20 +116,14 @@ def _augment(X: np.ndarray, y: list[str], times: int, sigma: float) -> tuple[np.
 
 
 def _temporal_split(
-    X: np.ndarray,
-    y: list[str],
-    ts: list[float],
-    test_size: float,
-    session_gap: float = 300.0,
+    X: np.ndarray, y: list[str], ts: list[float], test_size: float
 ) -> tuple[np.ndarray, np.ndarray, list[str], list[str]]:
-    """Split train/val berbasis waktu per label, sadar-sesi.
+    """Split train/val berbasis waktu per label.
 
     Auto-capture menghasilkan frame beruntun yang nyaris identik; split acak
-    membuat duplikat bocor ke validasi (akurasi menipu). Sampel tiap label
-    dikelompokkan menjadi SESI (jeda antar sampel > session_gap detik = sesi
-    baru), lalu sampel TERBARU tiap sesi ditahan sebagai validasi. Dengan
-    begitu tiap domain perekaman (orang/kamera/hari berbeda) tetap terwakili
-    di train, sementara kebocoran burst tetap dicegah.
+    membuat duplikat bocor ke validasi (akurasi menipu). Dengan menahan sampel
+    TERBARU tiap label sebagai validasi, evaluasi jadi jujur terhadap sesi baru
+    tanpa mengorbankan banyak data latih.
     """
     y_arr = np.asarray(y)
     ts_arr = np.asarray(ts)
@@ -126,20 +132,12 @@ def _temporal_split(
     for label in np.unique(y_arr):
         idx = np.where(y_arr == label)[0]
         idx = idx[np.argsort(ts_arr[idx])]
-        # Pecah menjadi sesi berdasarkan jeda waktu.
-        sessions: list[list[int]] = [[int(idx[0])]]
-        for i in idx[1:]:
-            if ts_arr[i] - ts_arr[sessions[-1][-1]] > session_gap:
-                sessions.append([int(i)])
-            else:
-                sessions[-1].append(int(i))
-        for sess in sessions:
-            if len(sess) < 3:
-                train_idx.extend(sess)
-                continue
-            n_val = max(1, int(round(len(sess) * test_size)))
-            train_idx.extend(sess[:-n_val])
-            val_idx.extend(sess[-n_val:])
+        if len(idx) < 3:
+            train_idx.extend(idx.tolist())
+            continue
+        n_val = max(1, int(round(len(idx) * test_size)))
+        train_idx.extend(idx[:-n_val].tolist())
+        val_idx.extend(idx[-n_val:].tolist())
     if not val_idx:  # dataset terlalu kecil -> evaluasi pada train (dgn catatan)
         val_idx = train_idx
     return (
@@ -151,7 +149,11 @@ def _temporal_split(
 
 
 def _collect_sequence_samples(
-    mode: str, stage: str, seq_len: int
+    mode: str,
+    stage: str,
+    seq_len: int,
+    created_before: Optional[float] = None,
+    created_after: Optional[float] = None,
 ) -> tuple[np.ndarray, list[str], list[float]]:
     """Kumpulkan sampel urutan (num_frames>1), resample ke seq_len, lalu flatten."""
     X: list[np.ndarray] = []
@@ -159,6 +161,10 @@ def _collect_sequence_samples(
     ts: list[float] = []
     for rec in iter_records():
         if rec.mode != mode or rec.stage != stage or rec.num_frames <= 1:
+            continue
+        if created_before is not None and rec.created_at >= created_before:
+            continue
+        if created_after is not None and rec.created_at < created_after:
             continue
         seq = load_features(rec)  # (T, F)
         if seq.ndim != 2:
@@ -262,11 +268,13 @@ def _fit_and_save(
 def train_alphabet(
     mode: str,
     stage: str = "abjad",
-    augment_times: int = 2,
+    augment_times: int = 4,
     augment_sigma: float = 0.01,
     test_size: float = 0.2,
+    created_before: Optional[float] = None,
+    created_after: Optional[float] = None,
 ) -> TrainResult:
-    X, y, ts = _collect_static_samples(mode, stage)
+    X, y, ts = _collect_static_samples(mode, stage, created_before, created_after)
     return _fit_and_save(
         X, y, mode, stage, augment_times, augment_sigma, test_size, ts=ts
     )
@@ -279,9 +287,13 @@ def train_words(
     augment_times: int = 2,
     augment_sigma: float = 0.01,
     test_size: float = 0.2,
+    created_before: Optional[float] = None,
+    created_after: Optional[float] = None,
 ) -> TrainResult:
     """Latih classifier kata dari sampel urutan (resample ke seq_len lalu flatten)."""
-    X, y, ts = _collect_sequence_samples(mode, stage, seq_len)
+    X, y, ts = _collect_sequence_samples(
+        mode, stage, seq_len, created_before, created_after
+    )
     return _fit_and_save(
         X,
         y,
